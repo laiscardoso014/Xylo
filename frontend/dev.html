@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Página interna: não deve aparecer em buscadores -->
+    <meta name="robots" content="noindex, nofollow">
+    <title>Painel CTech · Xylo</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <script src="js/tema.js"></script>
+    <link rel="stylesheet" href="css/dev.css">
+</head>
+
+<body>
+    <!-- =========================================================
+         LOGIN DO PAINEL (aparece quando não há sessão)
+    ========================================================== -->
+    <section class="dev-login" id="tela-login" hidden>
+        <form class="card" id="form-login-dev" novalidate>
+            <div class="logo-icone"><i class="fas fa-code"></i></div>
+            <h1>Painel do Desenvolvedor</h1>
+            <p>Acesso restrito à equipe da CTech.</p>
+
+            <div class="grade-campos">
+                <div class="campo">
+                    <label for="dev-email">E-mail</label>
+                    <input type="email" id="dev-email" name="email" autocomplete="username" required>
+                </div>
+                <div class="campo">
+                    <label for="dev-senha">Senha</label>
+                    <input type="password" id="dev-senha" name="senha" autocomplete="current-password" required>
+                </div>
+            </div>
+
+            <div class="form-erro" id="dev-erro" hidden></div>
+            <button type="submit" class="btn btn-primario" id="btn-entrar-dev">
+                <i class="fas fa-right-to-bracket"></i> Entrar no painel
+            </button>
+        </form>
+    </section>
+
+    <!-- =========================================================
+         PAINEL
+    ========================================================== -->
+    <div class="app" id="tela-painel" hidden>
+
+        <aside class="menu" id="menu">
+            <div class="menu-topo" data-recarregar title="Recarregar a página">
+                <div class="logo-icone"><svg class="xylo-marca" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" transform="rotate(45 12 12)"/><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" opacity=".72" transform="rotate(-45 12 12)"/><circle cx="12" cy="12" r="1.5" fill="#15803d"/></svg></div>
+                <span class="logo-texto">Xylo</span>
+            </div>
+
+            <nav class="menu-itens">
+                <div class="menu-titulo">Painel do desenvolvedor</div>
+                <a href="#inicio" data-rota="inicio"><i class="fas fa-gauge"></i> Visão geral</a>
+                <a href="#solicitacoes" data-rota="solicitacoes"><i class="fas fa-inbox"></i> Solicitações <span class="badge" id="badge-pendentes"></span></a>
+                <a href="#empresas" data-rota="empresas"><i class="fas fa-building"></i> Empresas</a>
+
+                <div class="menu-titulo">Links</div>
+                <a href="index.html" target="_blank" rel="noopener"><i class="fas fa-globe"></i> Página de venda</a>
+                <a href="login.html" target="_blank" rel="noopener"><i class="fas fa-right-to-bracket"></i> Login das empresas</a>
+            </nav>
+        </aside>
+
+        <div class="principal">
+            <header class="topo">
+                <button type="button" class="icone-botao so-mobile" id="btn-menu" aria-label="Abrir menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+
+                <h1 id="titulo-pagina">Visão geral</h1>
+
+                <div class="topo-direita">
+                    <div class="aparencia" id="aparencia"></div>
+                    <div class="quem">
+                        <strong id="info-dev"></strong>
+                        <span>Desenvolvedor</span>
+                    </div>
+                    <button type="button" class="btn btn-secundario pequeno" id="btn-sair">
+                        <i class="fas fa-right-from-bracket"></i> <span class="some-mobile">Sair</span>
+                    </button>
+                </div>
+            </header>
+
+            <main class="conteudo" id="conteudo"></main>
+        </div>
+    </div>
+
+    <!-- Janela (modal) -->
+    <div class="modal-fundo" id="modal" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+            <div class="modal-cabecalho">
+                <h2 id="modal-titulo"></h2>
+                <button type="button" class="icone-botao" id="modal-fechar" aria-label="Fechar">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-corpo" id="modal-corpo"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" hidden></div>
+
+    <!-- Funções compartilhadas: carregar antes dos outros scripts -->
+    <script src="js/comum.js"></script>
+    <script src="js/dev.js"></script>
+</body>
+</html>

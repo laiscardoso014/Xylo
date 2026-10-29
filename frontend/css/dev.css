@@ -1,0 +1,52 @@
+/* =====================================================================
+   Xylo (CTech) - Painel do Desenvolvedor (dev.html)
+   Complementa o main.css: carregue os dois, nesta ordem.
+   Aqui ficam só os estilos exclusivos do painel.
+   ===================================================================== */
+
+.selo-pendente  { background: var(--wood-100); color: var(--wood-700); }
+.selo-contato   { background: #dbeafe; color: #1e40af; }
+.selo-recusada  { background: #fee2e2; color: #991b1b; }
+
+.menu-itens a .badge {
+    margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 999px;
+    background: var(--wood-500); color: var(--white); font-size: 12px; font-weight: 700; text-align: center;
+}
+.menu-itens a .badge:empty { display: none; }
+
+.filtros { display: flex; gap: 6px; flex-wrap: wrap; }
+.filtro {
+    padding: 7px 14px; border-radius: 999px; border: 1px solid var(--gray-200);
+    background: var(--white); color: var(--gray-600); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.filtro:hover { border-color: var(--gray-300); color: var(--gray-900); }
+.filtro.ativo { background: var(--gray-900); border-color: var(--gray-900); color: var(--white); }
+
+.detalhes { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; margin: 0 0 16px; font-size: 14px; }
+.detalhes dt { color: var(--texto-suave); }
+.detalhes dd { margin: 0; color: var(--gray-900); overflow-wrap: anywhere; }
+
+.credenciais {
+    margin: 4px 0 16px; padding: 16px; border-radius: 12px;
+    background: var(--green-50); border: 1px solid var(--green-100);
+    font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 14px; line-height: 1.8;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.aviso-info {
+    padding: 12px 14px; border-radius: 10px; font-size: 13px;
+    background: var(--wood-100); color: var(--wood-700); margin-bottom: 16px;
+}
+
+/* Tela de login do painel */
+.dev-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--escuro); }
+.dev-login .card { width: 100%; max-width: 400px; }
+.dev-login .card h1 { margin: 12px 0 4px; font-size: 22px; }
+.dev-login .card p { margin: 0 0 20px; }
+.dev-login .card .grade-campos { grid-template-columns: 1fr; }
+.dev-login .logo-icone { margin: 0; }
+.dev-login .btn { width: 100%; justify-content: center; margin-top: 8px; }
+
+@media (max-width: 600px) {
+    .detalhes { grid-template-columns: 1fr; gap: 2px; }
+    .detalhes dd { margin-bottom: 8px; }
+}

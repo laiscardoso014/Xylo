@@ -1,0 +1,2625 @@
+/* =========================================================
+   WOODCONTROL
+   style.css
+   Tema: SaaS madeireiro
+   Verde + madeira + interface profissional
+   ========================================================= */
+
+
+/* =========================================================
+   VARIÁVEIS
+   ========================================================= */
+
+:root {
+
+    /* Verde */
+    --green-950: #052e16;
+    --green-900: #14532d;
+    --green-800: #166534;
+    --green-700: #15803d;
+    --green-600: #16a34a;
+    --green-500: #22c55e;
+    --green-400: #4ade80;
+    --green-300: #86efac;
+    --green-200: #bbf7d0;
+    --green-100: #dcfce7;
+    --green-50: #f0fdf4;
+
+    /* Madeira */
+    --wood-900: #78350f;
+    --wood-800: #854d0e;
+    --wood-700: #92400e;
+    --wood-600: #a16207;
+    --wood-500: #ca8a04;
+    --wood-400: #d97706;
+    --wood-100: #fef3c7;
+    --wood-50: #fffbeb;
+
+    /* Cinza */
+    --gray-950: #030712;
+    --gray-900: #111827;
+    --gray-800: #1f2937;
+    --gray-700: #374151;
+    --gray-600: #4b5563;
+    --gray-500: #6b7280;
+    --gray-400: #9ca3af;
+    --gray-300: #d1d5db;
+    --gray-200: #e5e7eb;
+    --gray-100: #f3f4f6;
+    --gray-50: #f9fafb;
+
+    --white: #ffffff;
+
+    /* Tipografia */
+    --font-sans:
+        'Inter',
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        sans-serif;
+
+    /* Layout */
+    --container: 1140px;
+
+    /* Bordas */
+    --radius-sm: 8px;
+    --radius: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+
+    /* Sombras */
+    --shadow-sm:
+        0 1px 3px rgb(0 0 0 / 0.06);
+
+    --shadow:
+        0 4px 6px -1px rgb(0 0 0 / 0.08),
+        0 2px 4px -2px rgb(0 0 0 / 0.06);
+
+    --shadow-lg:
+        0 10px 15px -3px rgb(0 0 0 / 0.10),
+        0 4px 6px -4px rgb(0 0 0 / 0.10);
+
+    --shadow-xl:
+        0 20px 25px -5px rgb(0 0 0 / 0.12),
+        0 8px 10px -6px rgb(0 0 0 / 0.08);
+
+    /* Transições */
+    --transition: 0.2s ease;
+
+}
+
+
+/* =========================================================
+   RESET
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+}
+
+body {
+    font-family: var(--font-sans);
+    color: var(--gray-800);
+    background: var(--gray-50);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+    transition: all var(--transition);
+}
+
+ul {
+    list-style: none;
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+button {
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+input,
+select,
+textarea {
+    font-size: 1rem;
+}
+
+
+/* =========================================================
+   CONTAINER
+   ========================================================= */
+
+nav > div,
+section > div,
+.footer-content {
+    width: 100%;
+    max-width: var(--container);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+}
+
+
+/* =========================================================
+   NAVBAR
+   ========================================================= */
+
+nav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+
+    background: rgba(255, 255, 255, 0.94);
+
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    border-bottom: 1px solid var(--gray-200);
+
+    box-shadow:
+        0 1px 3px rgb(0 0 0 / 0.04);
+}
+
+nav > div:first-child > div {
+    min-height: 70px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1.5rem;
+}
+
+
+/* =========================================================
+   LOGO NAVBAR
+   ========================================================= */
+
+nav > div:first-child > div > div:first-child {
+    display: flex;
+    align-items: center;
+}
+
+nav > div:first-child > div > div:first-child > div {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+nav > div:first-child > div > div:first-child > div > div {
+    width: 40px;
+    height: 40px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-800),
+            var(--green-600)
+        );
+
+    color: var(--white);
+
+    font-size: 1.15rem;
+
+    box-shadow:
+        0 4px 10px rgb(22 101 52 / 0.30);
+}
+
+nav > div:first-child > div > div:first-child span {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--gray-900);
+}
+
+
+/* =========================================================
+   MENU DESKTOP
+   ========================================================= */
+
+nav > div:first-child > div > div:nth-child(2) {
+    display: none;
+
+    align-items: center;
+    gap: 1.5rem;
+}
+
+nav > div:first-child > div > div:nth-child(2) a {
+    position: relative;
+
+    font-size: 0.9rem;
+    font-weight: 600;
+
+    color: var(--gray-600);
+}
+
+nav > div:first-child > div > div:nth-child(2) a:hover {
+    color: var(--green-700);
+}
+
+nav > div:first-child > div > div:nth-child(2) a:last-child {
+    padding: 0.65rem 1.15rem;
+
+    border-radius: 9px;
+
+    background: var(--green-700);
+    color: var(--white);
+
+    box-shadow:
+        0 4px 10px rgb(22 101 52 / 0.25);
+}
+
+nav > div:first-child > div > div:nth-child(2) a:last-child:hover {
+    background: var(--green-800);
+    transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   MENU MOBILE
+   ========================================================= */
+
+#mobile-menu-btn {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9px;
+
+    color: var(--gray-700);
+
+    font-size: 1.2rem;
+
+    transition: all var(--transition);
+}
+
+#mobile-menu-btn:hover {
+    background: var(--gray-100);
+    color: var(--green-700);
+}
+
+#mobile-menu {
+    display: none;
+
+    padding:
+        0.75rem
+        1.25rem
+        1.25rem;
+
+    background: var(--white);
+
+    border-top: 1px solid var(--gray-200);
+}
+
+#mobile-menu.open {
+    display: block;
+}
+
+#mobile-menu > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+#mobile-menu a {
+    display: block;
+
+    padding: 0.75rem 1rem;
+
+    border-radius: 8px;
+
+    font-size: 0.95rem;
+    font-weight: 600;
+
+    color: var(--gray-700);
+}
+
+#mobile-menu a:hover {
+    background: var(--green-50);
+    color: var(--green-800);
+}
+
+#mobile-menu a:last-child {
+    margin-top: 0.5rem;
+
+    text-align: center;
+
+    background: var(--green-700);
+    color: var(--white);
+}
+
+#mobile-menu a:last-child:hover {
+    background: var(--green-800);
+    color: var(--white);
+}
+
+
+/* =========================================================
+   SEÇÕES
+   ========================================================= */
+
+section {
+    padding: 5rem 0;
+}
+
+section h2 {
+    margin-bottom: 0.85rem;
+
+    color: var(--gray-900);
+
+    font-size: clamp(1.7rem, 4vw, 2.25rem);
+    font-weight: 800;
+
+    line-height: 1.2;
+
+    letter-spacing: -0.035em;
+}
+
+section > div > div:first-child > p {
+    max-width: 650px;
+
+    margin:
+        0
+        auto
+        2.75rem;
+
+    color: var(--gray-600);
+
+    font-size: 1rem;
+}
+
+
+/* =========================================================
+   HERO
+   ========================================================= */
+
+section:first-of-type {
+    position: relative;
+
+    padding:
+        5rem
+        0
+        5.5rem;
+
+    overflow: hidden;
+
+    background:
+        radial-gradient(
+            circle at 85% 20%,
+            rgba(74, 222, 128, 0.16),
+            transparent 35%
+        ),
+        linear-gradient(
+            150deg,
+            var(--green-50) 0%,
+            var(--white) 52%,
+            var(--gray-50) 100%
+        );
+}
+
+section:first-of-type::before {
+    content: "";
+
+    position: absolute;
+
+    width: 280px;
+    height: 280px;
+
+    right: -120px;
+    bottom: -140px;
+
+    border-radius: 50%;
+
+    background:
+        rgba(22, 163, 74, 0.06);
+
+    pointer-events: none;
+}
+
+section:first-of-type > div > div {
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    align-items: center;
+
+    gap: 3.5rem;
+}
+
+
+/* =========================================================
+   HERO - CONTEÚDO
+   ========================================================= */
+
+section:first-of-type > div > div > div:first-child {
+    position: relative;
+    z-index: 2;
+}
+
+section:first-of-type
+> div
+> div
+> div:first-child
+> div:first-child {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 0.5rem;
+
+    margin-bottom: 1.25rem;
+
+    padding:
+        0.45rem
+        0.9rem;
+
+    border:
+        1px solid
+        var(--green-200);
+
+    border-radius: 999px;
+
+    background:
+        rgba(220, 252, 231, 0.75);
+
+    color: var(--green-800);
+
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+section:first-of-type
+> div
+> div
+> div:first-child
+> div:first-child
+i {
+
+    color: var(--green-600);
+}
+
+
+/* =========================================================
+   HERO - TÍTULO
+   ========================================================= */
+
+section:first-of-type h1 {
+    max-width: 720px;
+
+    margin-bottom: 1.3rem;
+
+    color: var(--gray-950);
+
+    font-size:
+        clamp(
+            2.2rem,
+            5vw,
+            3.55rem
+        );
+
+    font-weight: 800;
+
+    line-height: 1.1;
+
+    letter-spacing: -0.045em;
+}
+
+section:first-of-type h1 span {
+    background:
+        linear-gradient(
+            90deg,
+            var(--green-800),
+            var(--green-500)
+        );
+
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    color: transparent;
+}
+
+
+/* =========================================================
+   HERO - TEXTO
+   ========================================================= */
+
+section:first-of-type
+> div
+> div
+> div:first-child
+> p {
+
+    max-width: 650px;
+
+    margin-bottom: 2rem;
+
+    color: var(--gray-600);
+
+    font-size: 1.08rem;
+
+    line-height: 1.75;
+}
+
+
+/* =========================================================
+   HERO - BOTÕES
+   ========================================================= */
+
+section:first-of-type
+> div
+> div
+> div:first-child
+> div:last-child {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    gap: 0.85rem;
+}
+
+section:first-of-type
+> div
+> div
+> div:first-child
+> div:last-child
+a {
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 0.5rem;
+
+    min-height: 46px;
+
+    padding:
+        0.75rem
+        1.35rem;
+
+    border-radius: 10px;
+
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+section:first-of-type
+> div
+> div
+> div:first-child
+> div:last-child
+a:first-child {
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-700),
+            var(--green-600)
+        );
+
+    color: var(--white);
+
+    box-shadow:
+        0 6px 16px
+        rgb(22 101 52 / 0.28);
+}
+
+section:first-of-type
+> div
+> div
+> div:first-child
+> div:last-child
+a:first-child:hover {
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-800),
+            var(--green-700)
+        );
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 9px 20px
+        rgb(22 101 52 / 0.32);
+}
+
+section:first-of-type
+> div
+> div
+> div:first-child
+> div:last-child
+a:last-child {
+
+    border:
+        1.5px solid
+        var(--gray-300);
+
+    background: var(--white);
+
+    color: var(--gray-700);
+}
+
+section:first-of-type
+> div
+> div
+> div:first-child
+> div:last-child
+a:last-child:hover {
+
+    border-color: var(--green-500);
+
+    background: var(--green-50);
+
+    color: var(--green-800);
+}
+
+
+/* =========================================================
+   HERO - PAINEL
+   ========================================================= */
+
+section:first-of-type > div > div > div:last-child {
+    display: flex;
+    justify-content: center;
+    position: relative;
+}
+
+section:first-of-type
+> div
+> div
+> div:last-child
+> div {
+
+    width: 100%;
+    max-width: 480px;
+
+    overflow: hidden;
+
+    border:
+        1px solid
+        var(--gray-200);
+
+    border-radius: 18px;
+
+    background: var(--white);
+
+    box-shadow:
+        0 25px 50px
+        rgb(17 24 39 / 0.14);
+}
+
+
+/* =========================================================
+   PAINEL - TOPO
+   ========================================================= */
+
+section:first-of-type
+> div
+> div
+> div:last-child
+> div
+> div:first-child {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 0.45rem;
+
+    padding:
+        0.85rem
+        1rem;
+
+    background: var(--gray-100);
+
+    border-bottom:
+        1px solid
+        var(--gray-200);
+}
+
+section:first-of-type
+> div
+> div
+> div:last-child
+> div
+> div:first-child
+> div {
+
+    width: 10px;
+    height: 10px;
+
+    border-radius: 50%;
+}
+
+section:first-of-type
+> div
+> div
+> div:last-child
+> div
+> div:first-child
+> div:nth-child(1) {
+
+    background: #ef4444;
+}
+
+section:first-of-type
+> div
+> div
+> div:last-child
+> div
+> div:first-child
+> div:nth-child(2) {
+
+    background: #eab308;
+}
+
+section:first-of-type
+> div
+> div
+> div:last-child
+> div
+> div:first-child
+> div:nth-child(3) {
+
+    background: #22c55e;
+}
+
+section:first-of-type
+> div
+> div
+> div:last-child
+> div
+> div:first-child
+> span {
+
+    margin-left: 0.65rem;
+
+    color: var(--gray-500);
+
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   PAINEL - CONTEÚDO
+   ========================================================= */
+
+section:first-of-type
+> div
+> div
+> div:last-child
+> div
+> div:last-child {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 0.8rem;
+
+    padding: 1.25rem;
+}
+
+
+/* =========================================================
+   FUNCIONALIDADES
+   ========================================================= */
+
+#funcionalidades {
+    background: var(--white);
+}
+
+#funcionalidades > div > div:first-child {
+    text-align: center;
+}
+
+#funcionalidades > div > div:first-child h2 {
+    text-align: center;
+}
+
+#funcionalidades > div > div:first-child p {
+    text-align: center;
+}
+
+#funcionalidades > div > div:last-child {
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    gap: 1.25rem;
+}
+
+#funcionalidades > div > div:last-child > div {
+
+    padding: 1.6rem 1.4rem;
+
+    border:
+        1px solid
+        var(--gray-200);
+
+    border-radius: var(--radius);
+
+    background:
+        linear-gradient(
+            145deg,
+            var(--gray-50),
+            var(--white)
+        );
+
+    transition: all var(--transition);
+}
+
+#funcionalidades
+> div
+> div:last-child
+> div:hover {
+
+    border-color: var(--green-300);
+
+    background: var(--white);
+
+    transform: translateY(-4px);
+
+    box-shadow: var(--shadow-lg);
+}
+
+
+/* Ícone */
+
+#funcionalidades
+> div
+> div:last-child
+> div
+> div:first-child {
+
+    width: 48px;
+    height: 48px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 1.1rem;
+
+    border-radius: 12px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-100),
+            var(--green-50)
+        );
+
+    color: var(--green-700);
+
+    font-size: 1.2rem;
+}
+
+#funcionalidades
+> div
+> div:last-child
+> div:hover
+> div:first-child {
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-700),
+            var(--green-600)
+        );
+
+    color: var(--white);
+}
+
+
+/* Título */
+
+#funcionalidades h3 {
+
+    margin-bottom: 0.6rem;
+
+    color: var(--gray-900);
+
+    font-size: 1.12rem;
+    font-weight: 750;
+}
+
+
+/* Textos */
+
+#funcionalidades
+> div
+> div:last-child
+> div
+> p {
+
+    margin-bottom: 0.8rem;
+
+    color: var(--gray-600);
+
+    font-size: 0.92rem;
+
+    line-height: 1.65;
+}
+
+#funcionalidades
+> div
+> div:last-child
+> div
+> p:last-child {
+
+    margin-bottom: 0;
+}
+
+#funcionalidades strong {
+    color: var(--gray-700);
+}
+
+
+/* =========================================================
+   BENEFÍCIOS
+   ========================================================= */
+
+#beneficios {
+
+    background:
+        linear-gradient(
+            180deg,
+            var(--green-50) 0%,
+            var(--white) 100%
+        );
+}
+
+#beneficios > div > div {
+
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    gap: 3rem;
+}
+
+
+/* Coluna esquerda */
+
+#beneficios
+> div
+> div
+> div:first-child
+> h2 {
+
+    text-align: left;
+}
+
+#beneficios
+> div
+> div
+> div:first-child
+> p {
+
+    max-width: 560px;
+
+    margin:
+        0
+        0
+        2rem;
+
+    color: var(--gray-600);
+
+    text-align: left;
+}
+
+
+/* Lista benefícios */
+
+#beneficios
+> div
+> div
+> div:first-child
+> div {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 1.3rem;
+}
+
+#beneficios
+> div
+> div
+> div:first-child
+> div
+> div {
+
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 1rem;
+}
+
+
+/* Ícone benefício */
+
+#beneficios
+> div
+> div
+> div:first-child
+> div
+> div
+> div:first-child {
+
+    width: 43px;
+    height: 43px;
+
+    flex-shrink: 0;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border:
+        1px solid
+        var(--green-200);
+
+    border-radius: 11px;
+
+    background: var(--white);
+
+    color: var(--green-700);
+
+    box-shadow: var(--shadow-sm);
+}
+
+
+/* Título */
+
+#beneficios h4 {
+
+    margin-bottom: 0.25rem;
+
+    color: var(--gray-900);
+
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+
+/* Texto */
+
+#beneficios
+> div
+> div
+> div:first-child
+> div
+> div
+> div:last-child
+> p {
+
+    margin: 0;
+
+    color: var(--gray-600);
+
+    font-size: 0.9rem;
+
+    line-height: 1.6;
+}
+
+
+/* =========================================================
+   BENEFÍCIOS - ÁREAS
+   ========================================================= */
+
+#beneficios
+> div
+> div
+> div:last-child {
+
+    padding: 1.75rem;
+
+    border:
+        1px solid
+        var(--gray-200);
+
+    border-radius: var(--radius-lg);
+
+    background: var(--white);
+
+    box-shadow: var(--shadow-lg);
+}
+
+#beneficios
+> div
+> div
+> div:last-child
+> h3 {
+
+    margin-bottom: 1.3rem;
+
+    color: var(--gray-900);
+
+    font-size: 1.15rem;
+    font-weight: 750;
+
+    line-height: 1.4;
+}
+
+#beneficios
+> div
+> div
+> div:last-child
+> ul {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 0.9rem;
+}
+
+#beneficios
+> div
+> div
+> div:last-child
+> ul
+> li {
+
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 0.7rem;
+
+    color: var(--gray-700);
+
+    font-size: 0.91rem;
+
+    line-height: 1.55;
+}
+
+#beneficios
+> div
+> div
+> div:last-child
+> ul
+> li
+> i {
+
+    flex-shrink: 0;
+
+    margin-top: 0.18rem;
+
+    color: var(--green-600);
+}
+
+#beneficios
+> div
+> div
+> div:last-child
+> ul
+> li
+strong {
+
+    color: var(--gray-900);
+}
+
+
+/* =========================================================
+   COMO FUNCIONA
+   ========================================================= */
+
+#como-funciona {
+    background: var(--white);
+}
+
+#como-funciona > div > div:first-child {
+    text-align: center;
+}
+
+#como-funciona
+> div
+> div:first-child
+> h2 {
+
+    text-align: center;
+}
+
+#como-funciona
+> div
+> div:first-child
+> p {
+
+    text-align: center;
+}
+
+#como-funciona > div > div:last-child {
+
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    gap: 1.25rem;
+}
+
+#como-funciona
+> div
+> div:last-child
+> div {
+
+    position: relative;
+
+    padding: 1.75rem 1.4rem;
+
+    border:
+        1px solid
+        var(--gray-200);
+
+    border-radius: var(--radius);
+
+    background: var(--gray-50);
+
+    text-align: center;
+
+    transition: all var(--transition);
+}
+
+#como-funciona
+> div
+> div:last-child
+> div:hover {
+
+    background: var(--white);
+
+    border-color: var(--green-300);
+
+    transform: translateY(-3px);
+
+    box-shadow: var(--shadow);
+}
+
+
+/* Número */
+
+#como-funciona
+> div
+> div:last-child
+> div
+> div:first-child {
+
+    width: 48px;
+    height: 48px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    margin:
+        0
+        auto
+        1.1rem;
+
+    border-radius: 50%;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-800),
+            var(--green-600)
+        );
+
+    color: var(--white);
+
+    font-size: 1.2rem;
+    font-weight: 800;
+
+    box-shadow:
+        0 5px 14px
+        rgb(22 101 52 / 0.25);
+}
+
+
+/* Título */
+
+#como-funciona h3 {
+
+    margin-bottom: 0.55rem;
+
+    color: var(--gray-900);
+
+    font-size: 1.08rem;
+    font-weight: 750;
+}
+
+
+/* Texto */
+
+#como-funciona
+> div
+> div:last-child
+> div
+> p {
+
+    margin: 0;
+
+    color: var(--gray-600);
+
+    font-size: 0.9rem;
+
+    line-height: 1.6;
+}
+
+
+/* =========================================================
+   SEÇÃO SEGURANÇA / ACESSO
+   É a section sem ID entre COMO FUNCIONA e CONTATO
+   ========================================================= */
+
+section:not(:first-of-type):not(#funcionalidades):not(#beneficios):not(#como-funciona):not(#contato) {
+
+    padding:
+        4.5rem
+        0;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-900),
+            var(--green-800)
+        );
+
+    color: var(--white);
+}
+
+section:not(:first-of-type):not(#funcionalidades):not(#beneficios):not(#como-funciona):not(#contato)
+> div {
+
+    text-align: center;
+}
+
+section:not(:first-of-type):not(#funcionalidades):not(#beneficios):not(#como-funciona):not(#contato)
+h2 {
+
+    color: var(--white);
+
+    text-align: center;
+}
+
+section:not(:first-of-type):not(#funcionalidades):not(#beneficios):not(#como-funciona):not(#contato)
+> div
+> div
+> p {
+
+    max-width: 650px;
+
+    margin:
+        0
+        auto
+        2.5rem;
+
+    color: var(--green-100);
+
+    text-align: center;
+}
+
+
+/* Cards de segurança */
+
+section:not(:first-of-type):not(#funcionalidades):not(#beneficios):not(#como-funciona):not(#contato)
+> div
+> div
+> div {
+
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    gap: 0.85rem;
+}
+
+section:not(:first-of-type):not(#funcionalidades):not(#beneficios):not(#como-funciona):not(#contato)
+> div
+> div
+> div
+> div {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 0.75rem;
+
+    padding: 1rem;
+
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.15);
+
+    border-radius: 10px;
+
+    background:
+        rgba(255, 255, 255, 0.08);
+
+    color: var(--white);
+
+    text-align: left;
+
+    transition: all var(--transition);
+}
+
+section:not(:first-of-type):not(#funcionalidades):not(#beneficios):not(#como-funciona):not(#contato)
+> div
+> div
+> div
+> div:hover {
+
+    background:
+        rgba(255, 255, 255, 0.13);
+
+    transform: translateY(-2px);
+}
+
+section:not(:first-of-type):not(#funcionalidades):not(#beneficios):not(#como-funciona):not(#contato)
+> div
+> div
+> div
+> div
+> i {
+
+    width: 36px;
+    height: 36px;
+
+    flex-shrink: 0;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9px;
+
+    background:
+        rgba(255, 255, 255, 0.12);
+
+    color: var(--green-300);
+}
+
+
+/* =========================================================
+   CONTATO
+   ========================================================= */
+
+#contato {
+
+    background:
+        linear-gradient(
+            180deg,
+            var(--green-50) 0%,
+            var(--gray-50) 100%
+        );
+}
+
+#contato > div > div:first-child {
+    text-align: center;
+}
+
+#contato
+> div
+> div:first-child
+> h2 {
+
+    text-align: center;
+}
+
+#contato
+> div
+> div:first-child
+> p {
+
+    max-width: 650px;
+
+    margin:
+        0
+        auto
+        2.5rem;
+
+    color: var(--gray-600);
+
+    text-align: center;
+}
+
+
+/* =========================================================
+   FORMULÁRIO
+   ========================================================= */
+
+#form-contratacao {
+
+    width: 100%;
+    max-width: 720px;
+
+    margin: 0 auto;
+
+    padding: 2rem 1.5rem;
+
+    border:
+        1px solid
+        var(--gray-200);
+
+    border-radius: var(--radius-lg);
+
+    background: var(--white);
+
+    box-shadow: var(--shadow-xl);
+}
+
+#form-contratacao > div:first-child {
+
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    gap: 1.2rem;
+}
+
+
+/* =========================================================
+   LABEL
+   ========================================================= */
+
+#form-contratacao label {
+
+    display: block;
+
+    margin-bottom: 0.4rem;
+
+    color: var(--gray-700);
+
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   INPUTS
+   ========================================================= */
+
+#form-contratacao input,
+#form-contratacao select,
+#form-contratacao textarea {
+
+    width: 100%;
+
+    padding:
+        0.78rem
+        0.95rem;
+
+    border:
+        1.5px solid
+        var(--gray-300);
+
+    border-radius: var(--radius-sm);
+
+    background: var(--white);
+
+    color: var(--gray-800);
+
+    outline: none;
+
+    transition:
+        border-color var(--transition),
+        box-shadow var(--transition),
+        background var(--transition);
+}
+
+#form-contratacao input:hover,
+#form-contratacao select:hover,
+#form-contratacao textarea:hover {
+
+    border-color: var(--gray-400);
+}
+
+#form-contratacao input:focus,
+#form-contratacao select:focus,
+#form-contratacao textarea:focus {
+
+    border-color: var(--green-600);
+
+    box-shadow:
+        0 0 0 3px
+        rgb(22 163 74 / 0.12);
+}
+
+#form-contratacao input::placeholder,
+#form-contratacao textarea::placeholder {
+
+    color: var(--gray-400);
+}
+
+
+/* =========================================================
+   SELECT
+   ========================================================= */
+
+#form-contratacao select {
+
+    cursor: pointer;
+
+    appearance: none;
+
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+
+    background-repeat: no-repeat;
+
+    background-position:
+        right 0.9rem center;
+
+    padding-right: 2.5rem;
+}
+
+
+/* =========================================================
+   TEXTAREA
+   ========================================================= */
+
+#form-contratacao textarea {
+
+    min-height: 105px;
+
+    resize: vertical;
+}
+
+
+/* =========================================================
+   ÁREAS DE LARGURA COMPLETA
+   ========================================================= */
+
+#form-contratacao
+> div:first-child
+> div:nth-child(9) {
+
+    grid-column: 1 / -1;
+}
+
+
+/* =========================================================
+   BOTÃO DO FORMULÁRIO
+   ========================================================= */
+
+#form-contratacao > div:nth-child(2) {
+
+    margin-top: 1.75rem;
+
+    text-align: center;
+}
+
+#btn-enviar {
+
+    width: 100%;
+
+    min-height: 50px;
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 0.55rem;
+
+    padding:
+        0.85rem
+        1.5rem;
+
+    border-radius: 10px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-700),
+            var(--green-600)
+        );
+
+    color: var(--white);
+
+    font-size: 1rem;
+    font-weight: 700;
+
+    box-shadow:
+        0 5px 14px
+        rgb(22 101 52 / 0.28);
+
+    transition: all var(--transition);
+}
+
+#btn-enviar:hover {
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-800),
+            var(--green-700)
+        );
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 18px
+        rgb(22 101 52 / 0.32);
+}
+
+#btn-enviar:active {
+
+    transform: translateY(0);
+}
+
+#btn-enviar:disabled {
+
+    opacity: 0.65;
+
+    cursor: not-allowed;
+
+    transform: none;
+}
+
+
+/* Texto abaixo do botão */
+
+#form-contratacao
+> div:nth-child(2)
+> p {
+
+    margin-top: 0.9rem;
+
+    color: var(--gray-500);
+
+    font-size: 0.78rem;
+
+    text-align: center;
+}
+
+
+/* =========================================================
+   MENSAGEM DE SUCESSO
+   ========================================================= */
+
+#sucesso {
+
+    display: none;
+
+    margin-top: 1.5rem;
+
+    padding: 1.5rem;
+
+    border:
+        1px solid
+        var(--green-200);
+
+    border-radius: var(--radius);
+
+    background: var(--green-50);
+
+    text-align: center;
+}
+
+#sucesso.show {
+    display: block;
+}
+
+#sucesso i {
+
+    display: block;
+
+    margin-bottom: 0.6rem;
+
+    color: var(--green-600);
+
+    font-size: 2.3rem;
+}
+
+#sucesso p {
+
+    margin: 0;
+
+    color: var(--green-800);
+
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+footer {
+
+    padding-top: 3.75rem;
+
+    background: var(--gray-900);
+
+    color: var(--gray-300);
+}
+
+.footer-content {
+
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    gap: 2.5rem;
+
+    padding-bottom: 2.75rem;
+}
+
+
+/* =========================================================
+   FOOTER - LOGO
+   ========================================================= */
+
+.footer-logo {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 0.65rem;
+
+    margin-bottom: 1rem;
+}
+
+.footer-logo-icon {
+
+    width: 38px;
+    height: 38px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-600),
+            var(--green-500)
+        );
+
+    color: var(--white);
+
+    font-size: 1rem;
+}
+
+.footer-logo span {
+
+    color: var(--white);
+
+    font-size: 1.25rem;
+    font-weight: 800;
+
+    letter-spacing: -0.025em;
+}
+
+
+/* =========================================================
+   FOOTER - MARCA
+   ========================================================= */
+
+.footer-brand p {
+
+    max-width: 340px;
+
+    color: var(--gray-400);
+
+    font-size: 0.9rem;
+
+    line-height: 1.7;
+}
+
+
+/* =========================================================
+   FOOTER - COLUNAS
+   ========================================================= */
+
+.footer-col h4 {
+
+    margin-bottom: 1rem;
+
+    color: var(--white);
+
+    font-size: 0.95rem;
+    font-weight: 750;
+}
+
+.footer-col ul {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 0.65rem;
+}
+
+.footer-col li {
+
+    color: var(--gray-400);
+
+    font-size: 0.88rem;
+
+    line-height: 1.5;
+}
+
+.footer-col a {
+
+    color: var(--gray-400);
+
+    font-size: 0.88rem;
+}
+
+.footer-col a:hover {
+
+    color: var(--green-400);
+
+    transform: translateX(2px);
+}
+
+
+/* =========================================================
+   FOOTER - CONTATO
+   ========================================================= */
+
+.footer-contact li {
+
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 0.65rem;
+
+    color: var(--gray-400);
+}
+
+.footer-contact i {
+
+    width: 18px;
+
+    flex-shrink: 0;
+
+    margin-top: 0.15rem;
+
+    color: var(--green-500);
+
+    text-align: center;
+}
+
+
+/* =========================================================
+   FOOTER BOTTOM
+   ========================================================= */
+
+.footer-bottom {
+
+    padding:
+        1.4rem
+        1.25rem;
+
+    border-top:
+        1px solid
+        var(--gray-800);
+
+    text-align: center;
+}
+
+.footer-bottom p {
+
+    color: var(--gray-500);
+
+    font-size: 0.82rem;
+
+    line-height: 1.6;
+}
+
+.footer-bottom strong {
+
+    color: var(--gray-300);
+
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   RESPONSIVIDADE
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   480px
+   --------------------------------------------------------- */
+
+@media (max-width: 480px) {
+
+    section {
+        padding: 4rem 0;
+    }
+
+    section:first-of-type {
+        padding:
+            4rem
+            0
+            4.5rem;
+    }
+
+    section:first-of-type h1 {
+        font-size: 2rem;
+    }
+
+    section:first-of-type
+    > div
+    > div
+    > div:first-child
+    > div:last-child {
+
+        flex-direction: column;
+
+        align-items: stretch;
+    }
+
+    section:first-of-type
+    > div
+    > div
+    > div:first-child
+    > div:last-child
+    a {
+
+        width: 100%;
+    }
+
+    section:first-of-type
+    > div
+    > div
+    > div:last-child
+    > div
+    > div:last-child {
+
+        padding: 1rem;
+    }
+
+    #form-contratacao {
+        padding:
+            1.5rem
+            1rem;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   640px
+   --------------------------------------------------------- */
+
+@media (min-width: 640px) {
+
+    #funcionalidades
+    > div
+    > div:last-child {
+
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    #como-funciona
+    > div
+    > div:last-child {
+
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    section:not(:first-of-type):not(#funcionalidades):not(#beneficios):not(#como-funciona):not(#contato)
+    > div
+    > div
+    > div {
+
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .footer-content {
+
+        grid-template-columns:
+            1.5fr
+            1fr
+            1fr;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   768px
+   --------------------------------------------------------- */
+
+@media (min-width: 768px) {
+
+    nav > div:first-child > div > div:nth-child(2) {
+
+        display: flex;
+    }
+
+    #mobile-menu-btn {
+        display: none;
+    }
+
+    section:first-of-type {
+
+        padding:
+            6rem
+            0
+            6.5rem;
+    }
+
+    section:first-of-type
+    > div
+    > div {
+
+        grid-template-columns:
+            1.08fr
+            0.92fr;
+
+        gap: 4rem;
+    }
+
+    #beneficios
+    > div
+    > div {
+
+        grid-template-columns:
+            1.15fr
+            0.85fr;
+
+        align-items: start;
+
+        gap: 4rem;
+    }
+
+    #form-contratacao {
+
+        padding:
+            2.25rem
+            2rem;
+    }
+
+    #form-contratacao
+    > div:first-child {
+
+        grid-template-columns:
+            1fr
+            1fr;
+    }
+
+    #form-contratacao
+    > div:first-child
+    > div:nth-child(9) {
+
+        grid-column: 1 / -1;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   900px
+   --------------------------------------------------------- */
+
+@media (min-width: 900px) {
+
+    section:not(:first-of-type):not(#funcionalidades):not(#beneficios):not(#como-funciona):not(#contato)
+    > div
+    > div
+    > div {
+
+        grid-template-columns:
+            repeat(4, 1fr);
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   1024px
+   --------------------------------------------------------- */
+
+@media (min-width: 1024px) {
+
+    section {
+        padding:
+            6rem
+            0;
+    }
+
+    #funcionalidades
+    > div
+    > div:last-child {
+
+        grid-template-columns:
+            repeat(3, 1fr);
+    }
+
+    #como-funciona
+    > div
+    > div:last-child {
+
+        grid-template-columns:
+            repeat(4, 1fr);
+    }
+
+    .footer-content {
+
+        grid-template-columns:
+            1.6fr
+            1fr
+            1fr
+            1.2fr;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   1200px
+   --------------------------------------------------------- */
+
+@media (min-width: 1200px) {
+
+    nav > div,
+    section > div,
+    .footer-content {
+
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+}
+
+
+/* =========================================================
+   ACESSIBILIDADE
+   ========================================================= */
+
+:focus-visible {
+
+    outline:
+        3px solid
+        var(--green-400);
+
+    outline-offset: 3px;
+}
+
+
+/* =========================================================
+   REDUÇÃO DE MOVIMENTO
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+
+        animation-duration: 0.01ms !important;
+
+        animation-iteration-count: 1 !important;
+
+        transition-duration: 0.01ms !important;
+
+        scroll-behavior: auto !important;
+    }
+
+}
+/* =========================================================
+   MARCA: símbolo do Xylo (SVG)
+   ========================================================= */
+.xylo-marca { display: block; }
+
+/* Links legais do rodapé (Termos de Uso / Política de Privacidade) */
+.footer-legal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    font-size: 0.82rem;
+    color: var(--gray-600);
+}
+.footer-legal a { color: var(--gray-400); text-decoration: none; }
+.footer-legal a:hover { color: var(--white); text-decoration: underline; }
+
+/* =========================================================
+   ABERTURA: "Xylo" como título principal
+   ========================================================= */
+section:first-of-type h1.hero-titulo {
+    max-width: 640px;
+    margin-bottom: 1.4rem;
+}
+
+/* O nome do produto, grande e com o degradê verde */
+section:first-of-type h1 .hero-xylo {
+    display: block;
+    font-size: clamp(4.2rem, 11vw, 7.25rem);
+    line-height: 0.95;
+    letter-spacing: -0.06em;
+    padding-bottom: 0.08em; /* não corta o "y" no degradê */
+}
+
+/* O slogan logo abaixo, em tom escuro (sem o degradê) */
+section:first-of-type h1 .hero-slogan {
+    display: block;
+    margin-top: 0.9rem;
+    font-size: clamp(1.45rem, 2.8vw, 2.05rem);
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+    color: var(--gray-900);
+    background: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    -webkit-text-fill-color: var(--gray-900);
+}
+
+section:first-of-type h1 .hero-slogan em {
+    font-style: normal;
+    color: var(--green-700);
+    -webkit-text-fill-color: var(--green-700);
+}
+
+/* Logo do topo um pouco maior: o Xylo é a marca principal */
+nav > div:first-child > div > div:first-child > div > div {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+}
+nav > div:first-child > div > div:first-child span {
+    font-size: 1.55rem;
+    letter-spacing: -0.04em;
+}
+nav .xylo-marca { width: 24px; height: 24px; }
+
+/* =========================================================
+   ABERTURA: painel de demonstração interativo (#demo-painel)
+   Dados ilustrativos, desenhados pelo js/script.js
+   ========================================================= */
+section:first-of-type > div > div > div:last-child > div > div.demo {
+    gap: 0.95rem;
+    padding: 1.1rem 1.25rem 1rem;
+}
+
+.demo-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.demo-titulo { margin: 0; font-size: 0.82rem; color: var(--gray-500); }
+.demo-titulo strong { color: var(--gray-900); font-weight: 700; }
+
+.demo-abas {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 999px;
+    background: var(--gray-100);
+}
+.demo-abas button {
+    border: 0;
+    border-radius: 999px;
+    padding: 0.32rem 0.75rem;
+    background: transparent;
+    color: var(--gray-600);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.demo-abas button[aria-pressed="true"] {
+    background: var(--white);
+    color: var(--green-800);
+    box-shadow: 0 1px 3px rgb(17 24 39 / 0.12);
+}
+
+/* Números do mês */
+.demo-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.demo-kpis li {
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--gray-50), var(--white));
+}
+.demo-kpis strong {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--gray-900);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.demo-kpis span { font-size: 0.7rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+
+/* Gráfico de barras */
+.demo-grafico { position: relative; margin: 0; }
+
+.demo-barras {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    align-items: end;
+    gap: 0.6rem;
+    height: 150px;
+    margin: 0;
+    padding: 0 0.15rem;
+    list-style: none;
+    /* linhas de grade discretas */
+    background: repeating-linear-gradient(to top, var(--gray-200) 0 1px, transparent 1px 25%);
+    background-position: 0 100%;
+    border-bottom: 1px solid var(--gray-300);
+}
+.demo-barras li { height: 100%; display: flex; }
+
+.demo-barra {
+    position: relative;
+    align-self: end;
+    width: 100%;
+    height: 0;
+    min-height: 4px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px 8px 3px 3px;
+    background: linear-gradient(180deg, #86efac, #4ade80);
+    cursor: pointer;
+    transition: height 0.7s cubic-bezier(.2, .8, .2, 1), background var(--transition), transform var(--transition);
+}
+.demo-barra:hover, .demo-barra:focus-visible { transform: translateY(-2px); background: linear-gradient(180deg, #4ade80, #22c55e); }
+.demo-barra[aria-pressed="true"] { background: linear-gradient(180deg, var(--green-500), var(--green-800)); }
+.demo-barra:focus-visible { outline: 3px solid rgb(22 163 74 / 0.4); outline-offset: 2px; }
+
+/* Rótulo do mês embaixo de cada barra */
+.demo-barra::after {
+    content: attr(data-mes);
+    position: absolute;
+    left: 50%;
+    bottom: -1.45rem;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--gray-500);
+    white-space: nowrap;
+}
+.demo-barra[aria-pressed="true"]::after { color: var(--green-800); font-weight: 800; }
+
+.demo-dica {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 3;
+    padding: 0.35rem 0.6rem;
+    border-radius: 8px;
+    background: var(--gray-900);
+    color: var(--white);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translate(-50%, calc(-100% - 8px));
+    box-shadow: 0 6px 16px rgb(17 24 39 / 0.25);
+}
+
+.demo-legenda {
+    margin-top: 1.85rem;
+    font-size: 0.7rem;
+    color: var(--gray-400);
+    text-align: center;
+}
+
+/* Detalhe por classe de madeira */
+.demo-classes {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0.85rem 0 0;
+    list-style: none;
+    border-top: 1px dashed var(--gray-200);
+}
+.demo-classes li {
+    display: grid;
+    grid-template-columns: 4.2rem 1fr 5.6rem;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.78rem;
+}
+.demo-classes .nome { font-weight: 600; color: var(--gray-700); }
+.demo-classes .trilho { height: 8px; border-radius: 99px; background: var(--gray-100); overflow: hidden; }
+.demo-classes .preenche {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: 99px;
+    transition: width 0.6s cubic-bezier(.2, .8, .2, 1);
+}
+.demo-classes .valor { text-align: right; font-weight: 700; color: var(--gray-900); font-variant-numeric: tabular-nums; }
+
+.demo-nota { margin: 0; font-size: 0.65rem; color: var(--gray-400); text-align: right; }
+
+@media (prefers-reduced-motion: reduce) {
+    .demo-barra, .demo-classes .preenche { transition: none; }
+}
+@media (max-width: 420px) {
+    .demo-kpis strong { font-size: 0.92rem; }
+    .demo-classes li { grid-template-columns: 3.6rem 1fr 5rem; }
+}
+
+/* Aviso de CPF/CNPJ/telefone errado (comum.js: aplicarMascara) */
+small.aviso-campo, .campo small.aviso-campo, .form-group small.aviso-campo { display: block; margin-top: 4px; font-size: 12px; font-weight: 500; color: #b91c1c; }
+small.aviso-campo[hidden] { display: none; }
+input[aria-invalid="true"] { border-color: #dc2626 !important; }
+input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important; }

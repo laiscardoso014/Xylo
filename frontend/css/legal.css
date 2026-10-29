@@ -1,0 +1,165 @@
+/* =====================================================================
+   Xylo (CTech) - páginas legais: termos.html e privacidade.html
+   ===================================================================== */
+
+:root {
+    --green-800: #166534;
+    --green-700: #15803d;
+    --green-600: #16a34a;
+    --green-50:  #f0fdf4;
+    --gray-900: #111827;
+    --gray-700: #374151;
+    --gray-600: #4b5563;
+    --gray-500: #6b7280;
+    --gray-200: #e5e7eb;
+    --gray-50:  #f9fafb;
+    --white:    #ffffff;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--gray-700);
+    background: var(--gray-50);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Topo */
+.legal-topo {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid var(--gray-200);
+    backdrop-filter: blur(12px);
+}
+
+.legal-topo-conteudo {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.legal-marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--gray-900);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.legal-marca-icone {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    background: linear-gradient(135deg, var(--green-800), var(--green-600));
+}
+
+.legal-marca small {
+    padding-left: 10px;
+    border-left: 1px solid var(--gray-200);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-500);
+}
+
+.legal-voltar {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--green-700);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.legal-voltar:hover { text-decoration: underline; }
+
+/* Conteúdo */
+.legal {
+    max-width: 860px;
+    margin: 32px auto 48px;
+    padding: 0 16px;
+}
+
+.legal-cartao {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 16px;
+    padding: clamp(24px, 5vw, 48px);
+}
+
+.legal h1 {
+    margin: 0 0 6px;
+    font-size: clamp(26px, 4vw, 34px);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--gray-900);
+}
+
+.legal-data {
+    margin: 0 0 28px;
+    font-size: 14px;
+    color: var(--gray-500);
+}
+
+.legal-resumo {
+    margin: 0 0 32px;
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--green-50);
+    border-left: 4px solid var(--green-600);
+    color: var(--gray-700);
+}
+
+.legal h2 {
+    margin: 32px 0 8px;
+    font-size: 19px;
+    color: var(--gray-900);
+}
+
+.legal p, .legal li { font-size: 15.5px; }
+.legal ul { padding-left: 22px; }
+.legal li { margin-bottom: 6px; }
+.legal a { color: var(--green-700); }
+.legal strong { color: var(--gray-900); }
+
+/* Índice */
+.legal-indice {
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+    columns: 2;
+    column-gap: 24px;
+    font-size: 14.5px;
+}
+.legal-indice li { break-inside: avoid; margin-bottom: 4px; }
+.legal-indice a { text-decoration: none; }
+.legal-indice a:hover { text-decoration: underline; }
+
+/* Rodapé */
+.legal-rodape {
+    padding: 24px 16px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--gray-500);
+    border-top: 1px solid var(--gray-200);
+}
+.legal-rodape a { color: var(--gray-600); }
+
+@media (max-width: 600px) {
+    .legal-indice { columns: 1; }
+    .legal-marca small { display: none; }
+}

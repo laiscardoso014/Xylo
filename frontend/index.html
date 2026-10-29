@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Xylo | Gestão de fretes de madeira</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    >
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+
+    <meta
+        name="description"
+        content="Xylo: sistema para a gestão de fretes e do fornecimento de madeira. Lance cada viagem uma vez e tenha valores por cliente, floresta e empreiteiro calculados automaticamente, com relatórios mensais e assistente virtual."
+    >
+</head>
+
+
+<body>
+
+
+    <!-- =========================================================
+         NAVBAR
+    ========================================================== -->
+
+    <nav>
+
+        <div>
+
+            <div>
+
+                <!-- Logo -->
+
+                <div data-recarregar title="Recarregar a página">
+
+                    <div>
+
+                        <div>
+                            <svg class="xylo-marca" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" transform="rotate(45 12 12)"/><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" opacity=".72" transform="rotate(-45 12 12)"/><circle cx="12" cy="12" r="1.5" fill="#15803d"/></svg>
+                        </div>
+
+                        <span>Xylo</span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Menu desktop -->
+
+                <div>
+
+                    <a href="#funcionalidades">
+                        Funcionalidades
+                    </a>
+
+                    <a href="#beneficios">
+                        Benefícios
+                    </a>
+
+                    <a href="#como-funciona">
+                        Como Funciona
+                    </a>
+
+                    <a href="#contato">
+                        Solicitar Acesso
+                    </a>
+
+                    <a href="login.html">
+                        Acessar Sistema
+                    </a>
+
+                </div>
+
+
+                <!-- Menu mobile -->
+
+                <button
+                    id="mobile-menu-btn"
+                    type="button"
+                    aria-label="Abrir menu"
+                >
+
+                    <i class="fas fa-bars"></i>
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- =====================================================
+             MOBILE MENU
+        ====================================================== -->
+
+        <div id="mobile-menu">
+
+            <div>
+
+                <a href="#funcionalidades">
+                    Funcionalidades
+                </a>
+
+                <a href="#beneficios">
+                    Benefícios
+                </a>
+
+                <a href="#como-funciona">
+                    Como Funciona
+                </a>
+
+                <a href="#contato">
+                    Solicitar Acesso
+                </a>
+
+                <a href="login.html">
+                    Acessar Sistema
+                </a>
+
+            </div>
+
+        </div>
+
+    </nav>
+
+
+
+    <!-- =========================================================
+         HERO
+    ========================================================== -->
+
+    <section>
+
+        <div>
+
+            <div>
+
+
+                <!-- Conteúdo principal -->
+
+                <div>
+
+                    <div>
+
+                        <i class="fas fa-check-circle"></i>
+
+                        Sistema web para o setor madeireiro
+
+                    </div>
+
+
+                    <h1 class="hero-titulo">
+                        <span class="hero-xylo">Xylo</span>
+                        <span class="hero-slogan">Gestão de <em>fretes de madeira</em>, do lançamento ao fechamento do mês.</span>
+                    </h1>
+
+
+                    <p>
+
+                        Chega de digitar a mesma carga em várias abas da planilha. No Xylo você lança cada viagem uma vez e o sistema calcula o que cada serraria paga, o que vai para a floresta e para o empreiteiro, com os relatórios do mês prontos.
+
+                    </p>
+
+
+                    <div>
+
+                        <a href="#contato">
+
+                            <i class="fas fa-rocket"></i>
+
+                            Solicitar Demonstração
+
+                        </a>
+
+
+                        <a href="#funcionalidades">
+
+                            Ver Funcionalidades
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     REPRESENTAÇÃO DO SISTEMA
+                ================================================== -->
+
+                <div>
+
+                    <div>
+
+
+                        <!-- Barra superior -->
+
+                        <div>
+
+                            <div></div>
+
+                            <div></div>
+
+                            <div></div>
+
+                            <span>
+                                Painel Xylo
+                            </span>
+
+                        </div>
+
+
+                        <!-- Conteúdo: demonstração interativa (dados ilustrativos, montada pelo js/script.js) -->
+                        <div class="demo" id="demo-painel">
+
+                            <header class="demo-topo">
+                                <p class="demo-titulo"><strong id="demo-mes">Janeiro/2026</strong> · resumo do mês</p>
+                                <span class="demo-abas" role="group" aria-label="Escolha o indicador">
+                                    <button type="button" data-metrica="ton" aria-pressed="true">Toneladas</button>
+                                    <button type="button" data-metrica="valor" aria-pressed="false">Faturamento</button>
+                                </span>
+                            </header>
+
+                            <ul class="demo-kpis">
+                                <li><strong id="demo-kpi-ton">–</strong><span>toneladas</span></li>
+                                <li><strong id="demo-kpi-valor">–</strong><span>faturamento</span></li>
+                                <li><strong id="demo-kpi-viagens">–</strong><span>viagens</span></li>
+                            </ul>
+
+                            <figure class="demo-grafico">
+                                <ol class="demo-barras" id="demo-barras" aria-label="Últimos 6 meses: clique em um mês para ver o detalhe"></ol>
+                                <span class="demo-dica" id="demo-dica" role="status" hidden></span>
+                                <figcaption class="demo-legenda">Passe o mouse ou clique em um mês</figcaption>
+                            </figure>
+
+                            <ul class="demo-classes" id="demo-classes" aria-label="Detalhe por classe de madeira"></ul>
+
+                            <p class="demo-nota">Dados ilustrativos</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================================
+         FUNCIONALIDADES
+    ========================================================== -->
+
+    <section id="funcionalidades">
+
+        <div>
+
+
+            <div>
+
+                <h2>
+                    Tudo que sua operação precisa
+                </h2>
+
+
+                <p>
+
+                    Tudo o que hoje está espalhado na planilha de fechamento, organizado em um só lugar, com as contas feitas pelo sistema.
+
+                </p>
+
+            </div>
+
+
+
+            <div>
+
+
+                <!-- =================================================
+                     1 - OPERAÇÃO
+                ================================================== -->
+
+                <div>
+
+                    <div>
+
+                        <i class="fas fa-route"></i>
+
+                    </div>
+
+
+                    <h3>
+                        Viagens
+                    </h3>
+
+
+                    <p>
+
+                        Cada carga é lançada uma única vez: o valor da tonelada vem da tabela de preços e o total é calculado na hora.
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>Inclui:</strong>
+
+                        nº da viagem, data, ticket, placa, floresta, empreiteiro, classe, peso líquido, valor da tonelada e valor total, inclusive cargas divididas entre empreiteiros.
+
+                    </p>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     2 - CADASTROS
+                ================================================== -->
+
+                <div>
+
+                    <div>
+
+                        <i class="fas fa-address-book"></i>
+
+                    </div>
+
+
+                    <h3>
+                        Cadastros
+                    </h3>
+
+
+                    <p>
+
+                        Os cadastros que alimentam as viagens, sempre padronizados para os relatórios baterem.
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>Inclui:</strong>
+
+                        clientes (serrarias), florestas, empreiteiros, motoristas e veículos.
+
+                    </p>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     3 - COMERCIAL
+                ================================================== -->
+
+                <div>
+
+                    <div>
+
+                        <i class="fas fa-tags"></i>
+
+                    </div>
+
+
+                    <h3>
+                        Tabela de Preços
+                    </h3>
+
+
+                    <p>
+
+                        Valores por classe de madeira (lixo, fina, média e grossa) configuráveis por serraria e por floresta, sem mexer em fórmulas.
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>Inclui:</strong>
+
+                        preço de venda à serraria, valor pago à floresta e ao empreiteiro, com data de vigência: mudar o preço não altera viagens antigas.
+
+                    </p>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     4 - LOGÍSTICA E FRETES
+                ================================================== -->
+
+                <div>
+
+                    <div>
+
+                        <i class="fas fa-truck-fast"></i>
+
+                    </div>
+
+
+                    <h3>
+                        Fretes e Despesas
+                    </h3>
+
+
+                    <p>
+
+                        Acompanhe os fretes à parte e os custos de cada empreiteiro para saber o valor líquido a pagar.
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>Inclui:</strong>
+
+                        fretes com status pago ou pendente, adiantamentos, diesel, posto e demais despesas por empreiteiro.
+
+                    </p>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     5 - FINANCEIRO
+                ================================================== -->
+
+                <div>
+
+                    <div>
+
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <h3>
+                        Relatórios
+                    </h3>
+
+
+                    <p>
+
+                        O fechamento do mês pronto em poucos cliques, sem conferir aba por aba.
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>Inclui:</strong>
+
+                        relatórios por cliente, por floresta e por empreiteiro, totalização mensal de toneladas e do valor total.
+
+                    </p>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     6 - PESSOAS E FOLHA
+                ================================================== -->
+
+                <div>
+
+                    <div>
+
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>
+                        Assistente Virtual
+                    </h3>
+
+
+                    <p>
+
+                        Um assistente com inteligência artificial que ajuda na conferência e responde perguntas sobre os seus dados.
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>Inclui:</strong>
+
+                        perguntas como “quantas toneladas a serraria recebeu em janeiro?” e alertas de ticket repetido, viagem sem preço ou peso fora do padrão.
+
+                    </p>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     7 - ADMINISTRAÇÃO
+                ================================================== -->
+
+                <div>
+
+                    <div>
+
+                        <i class="fas fa-building-shield"></i>
+
+                    </div>
+
+
+                    <h3>
+                        Usuários e Perfis
+                    </h3>
+
+
+                    <p>
+
+                        Cada pessoa da equipe entra com o próprio login e vê só o que o seu perfil permite.
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>Inclui:</strong>
+
+                        perfis Administrador (tudo), Financeiro (cadastra e lança) e Visualização (só consulta).
+
+                    </p>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     8 - RELATÓRIOS E CONTROLE
+                ================================================== -->
+
+                <div>
+
+                    <div>
+
+                        <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <h3>
+                        Segurança e Histórico
+                    </h3>
+
+
+                    <p>
+
+                        Os dados da sua empresa ficam separados e protegidos, com registro de tudo o que é feito.
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>Inclui:</strong>
+
+                        histórico de quem lançou ou alterou cada informação, senhas criptografadas e dados isolados por empresa.
+
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================================
+         BENEFÍCIOS
+    ========================================================== -->
+
+    <section id="beneficios">
+
+        <div>
+
+            <div>
+
+
+                <!-- =================================================
+                     COLUNA ESQUERDA
+                ================================================== -->
+
+                <div>
+
+                    <h2>
+                        Por que trocar a planilha pelo Xylo
+                    </h2>
+
+
+                    <p>
+
+                        Na planilha, a mesma carga é copiada em várias abas e os erros só aparecem no fechamento. No Xylo, cada informação é lançada uma vez.
+
+                    </p>
+
+
+
+                    <div>
+
+
+                        <!-- Benefício 1 -->
+
+                        <div>
+
+                            <div>
+
+                                <i class="fas fa-keyboard"></i>
+                                </div>
+                                <div>
+                                    <h4>
+                                        Lança uma vez, usa em tudo
+                                    </h4>
+                                    <p>
+                                        A mesma viagem gera o valor da serraria,
+                                        da floresta e do empreiteiro, sem
+                                        precisar digitar de novo.
+                                    </p>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Benefício 2 -->
+
+                        <div>
+
+                            <div>
+
+                                <i class="fas fa-shield-halved"></i>
+
+                            </div>
+
+
+                            <div>
+
+                                <h4>
+                                        Cada um vê o que pode
+                                    </h4>
+                                    <p>
+                                        Perfis de acesso garantem que só
+                                        quem tem permissão altera valores
+                                        e cadastros.
+                                    </p>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Benefício 3 -->
+
+                        <div>
+
+                            <div>
+
+                                <i class="fas fa-calculator"></i>
+
+                            </div>
+
+
+                            <div>
+
+                                <h4>
+                                        Contas automáticas
+                                    </h4>
+                                    <p>
+                                        Valor da tonelada pela tabela de preços
+                                        e totais calculados pelo sistema:
+                                        nada de fórmula quebrada.
+                                    </p>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Benefício 4 -->
+
+                        <div>
+
+                            <div>
+
+                                <i class="fas fa-circle-check"></i>
+                                </div>
+                                <div>
+                                    <h4>
+                                        Menos erros de digitação
+                                    </h4>
+                                    <p>
+                                        Ticket repetido é bloqueado, a placa é
+                                        padronizada e viagem sem preço
+                                        cadastrado não entra.
+                                    </p>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Benefício 5 -->
+
+                        <div>
+
+                            <div>
+
+                                <i class="fas fa-chart-line"></i>
+
+                            </div>
+
+
+                            <div>
+
+                                <h4>
+                                        Fechamento do mês na hora
+                                    </h4>
+                                    <p>
+                                        Toneladas e valores por cliente, floresta
+                                        e empreiteiro prontos para conferir.
+                                    </p>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Benefício 6 -->
+
+                        <div>
+
+                            <div>
+
+                                <i class="fas fa-clock-rotate-left"></i>
+                                </div>
+                                <div>
+                                    <h4>
+                                        Histórico confiável
+                                    </h4>
+                                    <p>
+                                        Fica registrado quem lançou e quem
+                                        alterou cada informação, e quando.
+                                    </p>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     COLUNA DIREITA
+                ================================================== -->
+
+                <div>
+
+                    <h3>
+                        Na planilha x no Xylo
+                    </h3>
+
+
+                    <ul>
+
+                        <li>
+
+                            <i class="fas fa-check-circle"></i>
+
+                            <span>
+                                <strong>Carga digitada uma vez</strong> — e não em três abas diferentes.
+                            </span>
+
+                        </li>
+
+
+                        <li>
+
+                            <i class="fas fa-check-circle"></i>
+
+                            <span>
+                                <strong>Preço pela tabela</strong> — sem copiar valor de tonelada à mão.
+                            </span>
+
+                        </li>
+
+
+                        <li>
+
+                            <i class="fas fa-check-circle"></i>
+
+                            <span>
+                                <strong>Totais calculados</strong> — sem fórmula quebrada ou célula apagada.
+                            </span>
+
+                        </li>
+
+
+                        <li>
+
+                            <i class="fas fa-check-circle"></i>
+
+                            <span>
+                                <strong>Relatórios prontos</strong> — por cliente, floresta e empreiteiro.
+                            </span>
+
+                        </li>
+
+
+                        <li>
+
+                            <i class="fas fa-check-circle"></i>
+
+                            <span>
+                                <strong>Acesso controlado</strong> — cada pessoa com o seu login e perfil.
+                            </span>
+
+                        </li>
+
+
+                        <li>
+
+                            <i class="fas fa-check-circle"></i>
+
+                            <span>
+                                <strong>Ajuda na conferência</strong> — assistente virtual que aponta inconsistências.
+                            </span>
+
+                        </li>
+
+                    </ul>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================================
+         COMO FUNCIONA
+    ========================================================== -->
+
+    <section id="como-funciona">
+
+        <div>
+
+
+            <div>
+
+                <h2>
+                    Como começar a usar
+                </h2>
+
+
+                <p>
+
+                    Do primeiro contato ao primeiro lançamento, em quatro passos.
+
+                </p>
+
+            </div>
+
+
+
+            <div>
+
+
+                <!-- ETAPA 1 -->
+
+                <div>
+
+                    <div>
+                        1
+                    </div>
+
+
+                    <h3>
+                        Solicite o acesso
+                    </h3>
+                    <p>
+                        Preencha o formulário abaixo com os dados
+                        da sua empresa. Leva menos de um minuto.
+                    </p>
+
+                </div>
+
+
+
+                <!-- ETAPA 2 -->
+
+                <div>
+
+                    <div>
+                        2
+                    </div>
+
+
+                    <h3>
+                        Conversamos com você
+                    </h3>
+                    <p>
+                        Nossa equipe entra em contato, apresenta
+                        o sistema e faz a configuração inicial.
+                    </p>
+
+                </div>
+
+
+
+                <!-- ETAPA 3 -->
+
+                <div>
+
+                    <div>
+                        3
+                    </div>
+
+
+                    <h3>
+                        Receba o acesso
+                    </h3>
+                    <p>
+                        O administrador da empresa recebe o login
+                        (CNPJ, e-mail e senha provisória) e cria
+                        a própria senha no primeiro acesso.
+                    </p>
+
+                </div>
+
+
+
+                <!-- ETAPA 4 -->
+
+                <div>
+
+                    <div>
+                        4
+                    </div>
+
+
+                    <h3>
+                        Monte a sua equipe
+                    </h3>
+                    <p>
+                        O administrador cadastra os demais usuários
+                        com o perfil certo e todos começam a lançar.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================================
+         SEGURANÇA / ACESSO
+    ========================================================== -->
+
+    <section>
+
+        <div>
+
+            <div>
+
+                <h2>
+                    Seus dados protegidos
+                </h2>
+
+
+                <p>
+
+                    Cada empresa enxerga apenas os próprios dados, e cada usuário só faz o que o seu perfil permite.
+
+                </p>
+
+
+                <div>
+
+
+                    <div>
+
+                        <i class="fas fa-building"></i>
+
+                        <span>
+                            Login por CNPJ, e-mail e senha
+                        </span>
+
+                    </div>
+
+
+                    <div>
+
+                        <i class="fas fa-users-gear"></i>
+                        <span>
+                            Três perfis de acesso
+                        </span>
+
+                    </div>
+
+
+                    <div>
+
+                        <i class="fas fa-user-shield"></i>
+
+                        <span>
+                            Dados separados por empresa
+                        </span>
+
+                    </div>
+
+
+                    <div>
+
+                        <i class="fas fa-lock"></i>
+
+                        <span>
+                            Senhas criptografadas
+                        </span>
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================================
+         SOLICITAÇÃO DE ACESSO
+    ========================================================== -->
+
+    <section id="contato">
+
+        <div>
+
+
+            <div>
+
+                <h2>
+                    Solicite o acesso ao Xylo
+                </h2>
+
+
+                <p>
+
+                    Informe os dados da sua empresa e entraremos
+                    em contato para apresentar o sistema e realizar
+                    a configuração inicial.
+
+                </p>
+
+            </div>
+
+
+
+            <form id="form-contratacao">
+
+
+                <div>
+
+
+                    <!-- Nome -->
+
+                    <div>
+
+                        <label for="nome">
+                            Nome completo *
+                        </label>
+
+
+                        <input
+                            type="text"
+                            id="nome"
+                            name="nome"
+                            required
+                            autocomplete="name"
+                            placeholder="Seu nome"
+                        >
+
+                    </div>
+
+
+
+                    <!-- WhatsApp -->
+
+                    <div>
+
+                        <label for="whatsapp">
+                            DDD + WhatsApp *
+                        </label>
+
+
+                        <input
+                            type="tel"
+                            id="whatsapp"
+                            name="whatsapp"
+                            required
+                            autocomplete="tel"
+                            placeholder="(00) 00000-0000"
+                        >
+
+                    </div>
+
+
+
+                    <!-- E-mail -->
+
+                    <div>
+
+                        <label for="email">
+                            E-mail corporativo *
+                        </label>
+
+
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            required
+                            autocomplete="email"
+                            placeholder="seu@empresa.com.br"
+                        >
+
+                    </div>
+
+
+
+                    <!-- CNPJ -->
+
+                    <div>
+
+                        <label for="cnpj">
+                            CNPJ da empresa *
+                        </label>
+
+
+                        <input
+                            type="text"
+                            id="cnpj"
+                            name="cnpj"
+                            required
+                            inputmode="numeric"
+                            placeholder="00.000.000/0000-00"
+                        >
+
+                    </div>
+
+
+
+                    <!-- Nome da empresa -->
+
+                    <div>
+
+                        <label for="empresa">
+                            Nome da empresa *
+                        </label>
+
+
+                        <input
+                            type="text"
+                            id="empresa"
+                            name="empresa"
+                            required
+                            placeholder="Razão social ou nome fantasia"
+                        >
+
+                    </div>
+
+
+
+                    <!-- Número de funcionários -->
+
+                    <div>
+
+                        <label for="funcionarios">
+                            Número de funcionários *
+                        </label>
+
+
+                        <select
+                            id="funcionarios"
+                            name="funcionarios"
+                            required
+                        >
+
+                            <option
+                                value=""
+                                selected
+                            >
+                                Selecione
+                            </option>
+
+
+                            <option value="1-5">
+                                1 a 5
+                            </option>
+
+
+                            <option value="6-15">
+                                6 a 15
+                            </option>
+
+
+                            <option value="16-30">
+                                16 a 30
+                            </option>
+
+
+                            <option value="31-50">
+                                31 a 50
+                            </option>
+
+
+                            <option value="51-100">
+                                51 a 100
+                            </option>
+
+
+                            <option value="100+">
+                                Mais de 100
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- Faturamento -->
+
+                    <div>
+
+                        <label for="faturamento">
+                            Faturamento mensal *
+                        </label>
+
+
+                        <select
+                            id="faturamento"
+                            name="faturamento"
+                            required
+                        >
+
+                            <option
+                                value=""
+                                selected
+                            >
+                                Selecione
+                            </option>
+
+
+                            <option value="ate-50k">
+                                Até R$ 50 mil
+                            </option>
+
+
+                            <option value="50k-100k">
+                                R$ 50 mil a R$ 100 mil
+                            </option>
+
+
+                            <option value="100k-300k">
+                                R$ 100 mil a R$ 300 mil
+                            </option>
+
+
+                            <option value="300k-500k">
+                                R$ 300 mil a R$ 500 mil
+                            </option>
+
+
+                            <option value="500k-1m">
+                                R$ 500 mil a R$ 1 milhão
+                            </option>
+
+
+                            <option value="acima-1m">
+                                Acima de R$ 1 milhão
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- Regime -->
+
+                    <div>
+
+                        <label for="regime">
+                            Regime fiscal *
+                        </label>
+
+
+                        <select
+                            id="regime"
+                            name="regime"
+                            required
+                        >
+
+                            <option
+                                value=""
+                                selected
+                            >
+                                Selecione o regime
+                            </option>
+
+
+                            <option value="mei">
+                                MEI
+                            </option>
+
+
+                            <option value="simples">
+                                Simples Nacional
+                            </option>
+
+
+                            <option value="presumido">
+                                Lucro Presumido
+                            </option>
+
+
+                            <option value="real">
+                                Lucro Real
+                            </option>
+
+
+                            <option value="outro">
+                                Outro / Não sei informar
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- Observações -->
+
+                    <div>
+
+                        <label for="observacoes">
+                            Observações
+                        </label>
+
+
+                        <textarea
+                            id="observacoes"
+                            name="observacoes"
+                            rows="3"
+                            placeholder="Conte um pouco sobre sua operação ou dúvidas..."
+                        ></textarea>
+
+                    </div>
+
+
+                </div>
+
+
+
+                <!-- Botão -->
+
+                <div>
+
+                    <button
+                        type="submit"
+                        id="btn-enviar"
+                    >
+
+                        <i class="fas fa-paper-plane"></i>
+
+                        <span>
+                            Enviar solicitação
+                        </span>
+
+                    </button>
+
+
+                    <p>
+
+                        Ao enviar, você concorda em ser contatado pela nossa equipe, conforme a
+                        <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.
+
+                    </p>
+
+                </div>
+
+
+
+                <!-- Mensagem de sucesso -->
+
+                <div id="sucesso">
+
+                    <i class="fas fa-check-circle"></i>
+
+
+                    <p>
+                        Solicitação enviada com sucesso!
+                    </p>
+
+                </div>
+
+
+            </form>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================================
+         RODAPÉ
+    ========================================================== -->
+
+    <footer>
+
+
+        <div class="footer-content">
+
+
+            <!-- Marca -->
+
+            <div class="footer-col footer-brand">
+
+
+                <div class="footer-logo" data-recarregar title="Recarregar a página">
+
+                    <div class="footer-logo-icon">
+                        <svg class="xylo-marca" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" transform="rotate(45 12 12)"/><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" opacity=".72" transform="rotate(-45 12 12)"/><circle cx="12" cy="12" r="1.5" fill="#15803d"/></svg>
+                    </div>
+
+                    <span>
+                        Xylo
+                    </span>
+
+                </div>
+
+
+                <p>
+
+                    Gestão de fretes e do fornecimento de madeira: viagens, preços por classe, relatórios e assistente virtual em uma única plataforma.
+
+                </p>
+
+            </div>
+
+
+
+            <!-- Navegação -->
+
+            <div class="footer-col">
+
+                <h4>
+                    Navegação
+                </h4>
+
+
+                <ul>
+
+                    <li>
+                        <a href="#funcionalidades">
+                            Funcionalidades
+                        </a>
+                    </li>
+
+
+                    <li>
+                        <a href="#beneficios">
+                            Benefícios
+                        </a>
+                    </li>
+
+
+                    <li>
+                        <a href="#como-funciona">
+                            Como Funciona
+                        </a>
+                    </li>
+
+
+                    <li>
+                        <a href="#contato">
+                            Solicitar Acesso
+                        </a>
+                    </li>
+
+
+                    <li>
+                        <a href="login.html">
+                            Acessar Sistema
+                        </a>
+                    </li>
+
+                </ul>
+
+            </div>
+
+
+
+            <!-- Módulos -->
+
+            <div class="footer-col">
+
+                <h4>
+                    Módulos
+                </h4>
+
+
+                <ul>
+
+                    <li>
+                            Viagens
+                        </li>
+                        <li>
+                            Cadastros
+                        </li>
+                        <li>
+                            Tabela de Preços
+                        </li>
+                        <li>
+                            Fretes e Despesas
+                        </li>
+                        <li>
+                            Relatórios
+                        </li>
+                        <li>
+                            Assistente Virtual
+                        </li>
+
+                </ul>
+
+            </div>
+
+
+
+            <!-- Contato -->
+
+            <div class="footer-col">
+
+                <h4>
+                    Suporte
+                </h4>
+
+
+                <ul class="footer-contact">
+
+                    <li>
+
+                        <i class="fas fa-envelope"></i>
+
+                        <span>
+                            contato@xylo.com.br
+                        </span>
+
+                    </li>
+
+
+                    <li>
+
+                        <i class="fas fa-headset"></i>
+
+                        <span>
+                            Suporte técnico para clientes ativos
+                        </span>
+
+                    </li>
+
+
+                    <li>
+
+                        <i class="fas fa-lock"></i>
+
+                        <span>
+                            Acesso seguro por empresa e usuário
+                        </span>
+
+                    </li>
+
+                </ul>
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- Rodapé inferior -->
+
+        <div class="footer-bottom">
+
+            <p>
+                &copy; 2026 &ndash; <strong>CTech Sistemas Ltda.</strong>
+                Todos os direitos reservados.
+            </p>
+
+            <div class="footer-legal">
+                <a href="termos.html">Termos de Uso</a>
+                <span aria-hidden="true">·</span>
+                <a href="privacidade.html">Política de Privacidade</a>
+            </div>
+
+        </div>
+
+
+    </footer>
+
+
+
+    <!-- =========================================================
+         JAVASCRIPT
+    ========================================================== -->
+
+    <!-- Funções compartilhadas: carregar antes dos outros scripts -->
+    <script src="js/comum.js"></script>
+    <script src="js/script.js"></script>
+
+
+</body>
+
+</html>

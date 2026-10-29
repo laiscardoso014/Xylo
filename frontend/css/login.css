@@ -1,0 +1,433 @@
+/* =====================================================================
+   Xylo (CTech) - tela de login (login.html)
+   Mesmas cores e fonte da tela principal (main.css) e do site (style.css)
+   ===================================================================== */
+
+:root {
+    --green-900: #14532d;
+    --green-800: #166534;
+    --green-700: #15803d;
+    --green-600: #16a34a;
+    --green-500: #22c55e;
+    --green-200: #bbf7d0;
+    --green-100: #dcfce7;
+    --green-50:  #f0fdf4;
+
+    --gray-900: #111827;
+    --gray-800: #1f2937;
+    --gray-700: #374151;
+    --gray-600: #4b5563;
+    --gray-500: #6b7280;
+    --gray-400: #9ca3af;
+    --gray-300: #d1d5db;
+    --gray-200: #e5e7eb;
+    --gray-100: #f3f4f6;
+    --gray-50:  #f9fafb;
+    --white:    #ffffff;
+
+    --radius: 14px;
+    --radius-sm: 10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--gray-900);
+    background: var(--gray-50);
+    -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+
+/* ---------------------------------------------------------------------
+   Estrutura: duas colunas (apresentação | formulário)
+   --------------------------------------------------------------------- */
+.login-page {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+}
+
+/* ---------------------------------------------------------------------
+   Coluna da esquerda: apresentação
+   --------------------------------------------------------------------- */
+.login-info {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    padding: 56px clamp(32px, 6vw, 88px);
+    color: var(--white);
+    background:
+        radial-gradient(circle at 15% 20%, rgba(34, 197, 94, 0.25), transparent 45%),
+        linear-gradient(150deg, var(--green-900) 0%, #0b2e1a 55%, var(--gray-900) 100%);
+}
+
+.login-info-content {
+    position: relative;
+    z-index: 1;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+/* Logo (primeiro link do bloco) */
+.login-info-content > a {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 22px;
+    font-weight: 800;
+    text-decoration: none;
+    letter-spacing: -0.02em;
+}
+
+.login-logo-icon,
+.mobile-logo-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--green-600);
+    color: var(--white);
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.login-intro h1 {
+    margin: 16px 0 14px;
+    font-size: clamp(30px, 3.4vw, 44px);
+    line-height: 1.12;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+
+.login-intro h1 span { color: var(--green-500); }
+
+.login-intro p {
+    margin: 0;
+    font-size: 17px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.login-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--green-200);
+}
+
+.login-features {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.login-feature {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.feature-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--green-500);
+    font-size: 18px;
+}
+
+.login-feature > div:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.login-feature strong,
+.login-feature > div:last-child > :first-child {
+    color: var(--white);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* Círculos decorativos ao fundo */
+.login-decoration {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+
+.login-decoration-one {
+    width: 520px;
+    height: 520px;
+    right: -220px;
+    bottom: -200px;
+    background: radial-gradient(circle, rgba(34, 197, 94, 0.12), transparent 70%);
+}
+
+.login-decoration-two {
+    width: 260px;
+    height: 260px;
+    right: 80px;
+    top: -120px;
+}
+
+/* ---------------------------------------------------------------------
+   Coluna da direita: formulário
+   --------------------------------------------------------------------- */
+.login-form-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 20px;
+    padding: 40px 36px;
+    box-shadow: 0 20px 50px -20px rgba(17, 24, 39, 0.18);
+}
+
+.login-card-header { margin-bottom: 28px; }
+
+.mobile-logo {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.welcome-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--green-700);
+}
+
+.login-card-header h2 {
+    margin: 6px 0 6px;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.login-card-header p {
+    margin: 0;
+    font-size: 15px;
+    color: var(--gray-500);
+}
+
+/* Campos */
+.form-group { margin-bottom: 18px; }
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+/* O ícone do rótulo repete o do campo: escondido para não poluir */
+.form-group label i { display: none; }
+
+.input-wrapper { position: relative; }
+
+.input-wrapper > i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-400);
+    font-size: 15px;
+    pointer-events: none;
+    transition: color 0.15s;
+}
+
+.input-wrapper input {
+    width: 100%;
+    height: 48px;
+    padding: 0 44px 0 44px;
+    font: inherit;
+    font-size: 15px;
+    color: var(--gray-900);
+    background: var(--gray-50);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.input-wrapper input::placeholder { color: var(--gray-400); }
+
+.input-wrapper input:focus {
+    background: var(--white);
+    border-color: var(--green-600);
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.15);
+}
+
+.input-wrapper:focus-within > i { color: var(--green-600); }
+
+.toggle-password {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--gray-500);
+    cursor: pointer;
+}
+
+.toggle-password:hover { background: var(--gray-100); color: var(--gray-700); }
+
+/* Mensagem de erro (o login.js liga/desliga a classe "visivel") */
+.login-error {
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.login-error.visivel { display: flex; }
+.login-error i { margin-top: 2px; }
+
+/* Botão */
+.login-button {
+    width: 100%;
+    height: 50px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--green-700);
+    color: var(--white);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    box-shadow: 0 8px 20px -8px rgba(21, 128, 61, 0.6);
+}
+
+.login-button:hover:not(:disabled) { background: var(--green-800); }
+.login-button:active:not(:disabled) { transform: translateY(1px); }
+.login-button:disabled { opacity: 0.75; cursor: wait; }
+
+.login-button-text,
+.login-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.login-button:focus-visible,
+.back-home:focus-visible,
+.toggle-password:focus-visible {
+    outline: 3px solid rgba(22, 163, 74, 0.45);
+    outline-offset: 2px;
+}
+
+/* Rodapé do cartão */
+.login-security {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 22px;
+    font-size: 13px;
+    color: var(--gray-500);
+}
+
+.login-security i { color: var(--green-600); }
+
+.back-home {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--gray-600);
+}
+
+.back-home:hover { background: var(--gray-100); color: var(--gray-900); }
+
+/* ---------------------------------------------------------------------
+   Celular e tablet: some a coluna da esquerda
+   --------------------------------------------------------------------- */
+@media (max-width: 900px) {
+    .login-page { grid-template-columns: 1fr; }
+    .login-info { display: none; }
+    .mobile-logo { display: flex; }
+    .login-form-section { min-height: 100vh; padding: 24px 16px; }
+    .login-card { padding: 32px 24px; }
+}
+
+/* Link discreto para o painel interno (dev.html) */
+.team-access {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--gray-100);
+    font-size: 12px;
+    color: var(--gray-400);
+    text-decoration: none;
+}
+
+.team-access:hover { color: var(--gray-700); }
+.team-access:focus-visible { outline: 3px solid rgba(22, 163, 74, 0.45); outline-offset: 2px; border-radius: 6px; }
+
+/* Marca: símbolo do Xylo (SVG) */
+.xylo-marca { display: block; }
+
+
+/* Aviso de CPF/CNPJ/telefone errado (comum.js: aplicarMascara) */
+small.aviso-campo, .campo small.aviso-campo, .form-group small.aviso-campo { display: block; margin-top: 4px; font-size: 12px; font-weight: 500; color: #b91c1c; }
+small.aviso-campo[hidden] { display: none; }
+input[aria-invalid="true"] { border-color: #dc2626 !important; }
+input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important; }
