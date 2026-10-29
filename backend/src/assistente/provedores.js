@@ -93,17 +93,69 @@ function montar(id, chave, url, modelo, modeloVisao) {
 // Devolve a lista em ordem de uso: [principal, reserva]. Lista vazia = modo básico.
 //   ASSISTENTE_PROVEDOR / ASSISTENTE_CHAVE / ASSISTENTE_MODELO            -> principal
 //   ASSISTENTE_RESERVA  / ASSISTENTE_RESERVA_CHAVE / ASSISTENTE_RESERVA_MODELO -> usada se a principal falhar
+// Limpa o valor lido do .env (espaços, aspas, ponto e vírgula colados por engano)
+const limpo = (v) => String(v || '').trim().replace(/^["']|["';]$/g, '').trim();
+
+// Descobre o provedor pelo começo da chave (quando ASSISTENTE_PROVEDOR ficou vazio)
+function provedorDaChave(chave) {
+  if (/^gsk_/.test(chave)) return 'groq';
+  if (/^AIza/.test(chave)) return 'gemini';
+  if (/^sk-ant-/.test(chave)) return 'anthropic';
+  return '';
+}
+// Nome do provedor como as pessoas escrevem: "Groq", "google", "gemini ", "claude"...
+function normalizarProvedor(v) {
+  const id = limpo(v).toLowerCase();
+  return { google: 'gemini', claude: 'anthropic' }[id] || id;
+}
+
+// Lê o .env e devolve o que foi encontrado + o motivo, se algo não fecha
+function lerAmbiente() {
+  const env = process.env;
+  const chave = limpo(env.ASSISTENTE_CHAVE || env.GROQ_API_KEY || env.GEMINI_API_KEY || env.GOOGLE_API_KEY || env.ANTHROPIC_API_KEY);
+  let id = normalizarProvedor(env.ASSISTENTE_PROVEDOR);
+  if (!id) {
+    if (env.GROQ_API_KEY && !env.ASSISTENTE_CHAVE) id = 'groq';
+    else if ((env.GEMINI_API_KEY || env.GOOGLE_API_KEY) && !env.ASSISTENTE_CHAVE) id = 'gemini';
+    else if (env.ANTHROPIC_API_KEY && !env.ASSISTENTE_CHAVE) id = 'anthropic';
+    else id = provedorDaChave(chave);
+  }
+  const chaveReserva = limpo(env.ASSISTENTE_RESERVA_CHAVE);
+  let idReserva = normalizarProvedor(env.ASSISTENTE_RESERVA);
+  if (!idReserva && chaveReserva) idReserva = provedorDaChave(chaveReserva);
+  return { id, chave, idReserva, chaveReserva };
+}
+
 function configuracoes() {
   const env = process.env;
-  let id = (env.ASSISTENTE_PROVEDOR || '').trim().toLowerCase();
-  if (!id && env.ANTHROPIC_API_KEY) id = 'anthropic'; // compatibilidade com a versão anterior
-  const principal = montar(id, env.ASSISTENTE_CHAVE || (id === 'anthropic' ? env.ANTHROPIC_API_KEY : ''),
-    env.ASSISTENTE_URL || env.ASSISTENTE_API_URL, env.ASSISTENTE_MODELO, env.ASSISTENTE_VISAO_MODELO);
-  const idReserva = (env.ASSISTENTE_RESERVA || '').trim().toLowerCase();
-  const reserva = idReserva && idReserva !== id
-    ? montar(idReserva, env.ASSISTENTE_RESERVA_CHAVE, env.ASSISTENTE_RESERVA_URL, env.ASSISTENTE_RESERVA_MODELO, env.ASSISTENTE_RESERVA_VISAO_MODELO)
+  const a = lerAmbiente();
+  const principal = montar(a.id, a.chave, env.ASSISTENTE_URL || env.ASSISTENTE_API_URL, limpo(env.ASSISTENTE_MODELO), limpo(env.ASSISTENTE_VISAO_MODELO));
+  const reserva = a.idReserva && a.idReserva !== a.id
+    ? montar(a.idReserva, a.chaveReserva, env.ASSISTENTE_RESERVA_URL, limpo(env.ASSISTENTE_RESERVA_MODELO), limpo(env.ASSISTENTE_RESERVA_VISAO_MODELO))
     : null;
   return [principal, reserva].filter(Boolean).map((c, i) => ({ ...c, papel: i === 0 ? 'principal' : 'reserva' }));
+}
+
+// Por que a IA está desligada? (texto para a tela e para o console)
+function motivoSemIA() {
+  if (configuracoes().length) return null;
+  const a = lerAmbiente();
+  const conhecidos = Object.keys(PADROES).join(', ');
+  if (!a.chave && !a.id) {
+    return 'O servidor não encontrou ASSISTENTE_PROVEDOR nem ASSISTENTE_CHAVE no arquivo .env. '
+      + 'Confira se o .env está DENTRO da pasta backend (ao lado do server.js) e se o servidor foi reiniciado depois de salvar.';
+  }
+  if (a.id && !PADROES[a.id]) return `ASSISTENTE_PROVEDOR="${a.id}" não é conhecido. Use um destes: ${conhecidos}.`;
+  if (!a.id) return 'Não deu para saber de qual empresa é a chave: preencha ASSISTENTE_PROVEDOR=groq (ou gemini) no .env.';
+  if (!a.chave) return `ASSISTENTE_PROVEDOR=${a.id}, mas ASSISTENTE_CHAVE está vazia no .env.`;
+  return 'A IA não ficou configurada. Confira as linhas ASSISTENTE_ no .env.';
+}
+
+// Resumo para o console quando o servidor inicia
+function resumoIA() {
+  const lista = configuracoes();
+  if (!lista.length) return `🤖 IA: desligada (modo básico). ${motivoSemIA()}`;
+  return `🤖 IA: ${lista.map((c) => `${c.nome} (${c.papel}, chave ${c.chave ? `…${c.chave.slice(-4)}` : 'não precisa'})`).join(' + ')}`;
 }
 const configuracao = () => configuracoes()[0] || null;
 
@@ -352,4 +404,4 @@ async function testar(cfg) {
   }
 }
 
-module.exports = { configuracao, configuracoes, conversar, lerImagem, pausar, emPausa, explicarErro, testar, PADROES };
+module.exports = { configuracao, configuracoes, motivoSemIA, resumoIA, conversar, lerImagem, pausar, emPausa, explicarErro, testar, PADROES };

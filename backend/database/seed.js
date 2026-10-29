@@ -1,6 +1,6 @@
 // Cria uma empresa e um usuário administrador de TESTE.
 // Rode uma vez, de dentro da pasta backend:   node database/seed.js
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const bcrypt = require('bcryptjs');
 const { pool } = require('../src/config/db');
 

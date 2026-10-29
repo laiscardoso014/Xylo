@@ -12,7 +12,7 @@
 // =====================================================================
 const express = require('express');
 const { autenticar, podeEditar } = require('../middlewares/auth');
-const { configuracoes, lerImagem, pausar, emPausa, explicarErro } = require('../assistente/provedores');
+const { configuracoes, lerImagem, pausar, emPausa, explicarErro, motivoSemIA } = require('../assistente/provedores');
 const { INSTRUCAO, extrairJSON, lerPorRotulos, normalizar, ligarCadastros, ligarFrete } = require('../tickets/leitor');
 
 // Para qual tela? ?para=viagens (padrão) ou ?para=fretes
@@ -45,7 +45,7 @@ function tipoImagem(buf) {
 
 router.get('/status', (req, res) => {
   const lista = configuracoes();
-  res.json({ foto: lista.length > 0, provedores: lista.map((c) => c.nome) });
+  res.json({ foto: lista.length > 0, provedores: lista.map((c) => c.nome), motivo: lista.length ? null : motivoSemIA() });
 });
 
 router.post('/ler', express.raw({ type: () => true, limit: '5mb' }), async (req, res, next) => {
@@ -57,7 +57,7 @@ router.post('/ler', express.raw({ type: () => true, limit: '5mb' }), async (req,
 
     const lista = configuracoes();
     if (!lista.length) {
-      return res.status(503).json({ erro: 'A leitura por foto precisa da IA configurada no servidor. Cole o texto do ticket ou digite os dados.' });
+      return res.status(503).json({ erro: `A leitura por foto precisa da IA configurada no servidor. ${motivoSemIA()}` });
     }
     if (!dentroDoLimite(req.usuario.id)) {
       return res.status(429).json({ erro: 'Muitas leituras seguidas. Espere alguns minutos ou digite os dados.' });

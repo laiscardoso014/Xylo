@@ -2,7 +2,7 @@
 // Cria (ou atualiza a senha de) um usuário do PAINEL DO DESENVOLVEDOR.
 // Rode de dentro da pasta backend:   node database/criar-dev.js
 // =====================================================================
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const readline = require('readline');
 const bcrypt = require('bcryptjs');
 const { pool } = require('../src/config/db');
