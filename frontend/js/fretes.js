@@ -138,9 +138,7 @@ async function telaFretes() {
             <select name="cliente_id" required><option value="">Selecione…</option>
               ${lista.map((c) => `<option value="${c.id}" ${c.id === f.cliente_id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></div>
           <div class="campo"><label>Destino</label><input name="destino" maxlength="100" value="${esc(f.destino)}" placeholder="Ex.: Balneário"></div>
-          <div class="campo"><label>Motorista</label><input name="motorista" maxlength="150" list="lista-motoristas-frete" autocomplete="off" value="${esc(f.motorista)}">
-            <datalist id="lista-motoristas-frete">${motoristas.map((m) => `<option value="${esc(m.nome)}">`).join('')}</datalist>
-            <small>Conta na comissão dele (folha de pagamento)</small></div>
+          ${campoMotorista(motoristas, f.motorista_id, f.motorista, { podeCadastrar: PERFIL.podeEditar })}
           <div class="campo"><label>Toneladas *</label><input name="toneladas" required inputmode="decimal" value="${decimal(f.toneladas)}" placeholder="Ex.: 46,57"></div>
           <div class="campo"><label>Cobrança *</label>
             <select name="cobranca">
@@ -186,7 +184,7 @@ async function telaFretes() {
     form.addEventListener('input', ajustar);
     form.addEventListener('change', ajustar);
     ajustar();
-    if (leitura) marcarLidos(form, leitura, ['cliente_id', 'toneladas', 'valor_tonelada', 'data']);
+    if (leitura) marcarLidos(form, leitura, ['cliente_id', 'motorista_id', 'toneladas', 'valor_tonelada', 'data']);
 
     ligarFormulario(async (dados) => {
       if (f.id) {
@@ -207,18 +205,24 @@ async function telaFretes() {
     const achar = (id) => fretes.find((f) => f.id === Number(id));
     try {
       if (alvo.id === 'btn-novo-frete') {
-        if (!clientes.length) { toast('Cadastre antes pelo menos um cliente.', 'erro'); return; }
+        if (!clientes.length || !motoristas.length) {
+          toast(clientes.length ? 'Cadastre antes pelo menos um motorista em Pessoal › Funcionários (marque "É motorista").' : 'Cadastre antes pelo menos um cliente.', 'erro');
+          return;
+        }
         formulario();
       }
       if (alvo.id === 'btn-ler-ticket-frete') {
-        if (!clientes.length) { toast('Cadastre antes pelo menos um cliente.', 'erro'); return; }
+        if (!clientes.length || !motoristas.length) {
+          toast(clientes.length ? 'Cadastre antes pelo menos um motorista em Pessoal › Funcionários (marque "É motorista").' : 'Cadastre antes pelo menos um cliente.', 'erro');
+          return;
+        }
         await abrirLeituraTicket({
           para: 'fretes',
           aoLer: (resultado, foto) => {
             const c = resultado.campos;
             formulario({
               data: c.data || hojeISO(), cliente_id: c.cliente_id, destino: c.destino, toneladas: c.toneladas,
-              valor_tonelada: c.valor_tonelada, valor_fechado: null, observacoes: c.observacoes, motorista: c.motorista,
+              valor_tonelada: c.valor_tonelada, valor_fechado: null, observacoes: c.observacoes, motorista_id: c.motorista_id,
             }, { resultado, foto });
           },
         });

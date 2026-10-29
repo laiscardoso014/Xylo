@@ -483,3 +483,21 @@ document.querySelectorAll('[data-recarregar]').forEach((el) => {
   el.addEventListener('click', recarregar);
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') recarregar(e); });
 });
+
+// ---------------------------------------------------------------------
+// MOTORISTA de viagens e fretes: só os cadastrados em Funcionários
+// ("É motorista"). lista = opcoes.motoristas [{ id, nome, funcionario }]
+// Corrigindo carga antiga com motorista que não é funcionário: ele aparece
+// como "(não cadastrado)" para não obrigar a trocar.
+// ---------------------------------------------------------------------
+function campoMotorista(lista, atualId, atualNome, { podeCadastrar = false } = {}) {
+  const itens = [...lista];
+  if (atualId && !itens.some((m) => m.id === Number(atualId))) itens.push({ id: Number(atualId), nome: `${atualNome || 'Motorista'} (não cadastrado)` });
+  const rotulo = (m) => (m.funcionario && m.funcionario.toLowerCase() !== m.nome.toLowerCase() ? `${m.nome} — ${m.funcionario}` : m.nome);
+  return `<div class="campo"><label>Motorista *</label>
+    <select name="motorista_id" required>
+      <option value="">${itens.length ? 'Selecione…' : 'Nenhum motorista cadastrado'}</option>
+      ${itens.map((m) => `<option value="${m.id}" ${Number(atualId) === m.id ? 'selected' : ''}>${esc(rotulo(m))}</option>`).join('')}
+    </select>
+    <small>Não está na lista? ${podeCadastrar ? 'Cadastre em <a href="#funcionarios">Pessoal › Funcionários</a>' : 'Peça para cadastrar em Pessoal › Funcionários'} (marque "É motorista").</small></div>`;
+}

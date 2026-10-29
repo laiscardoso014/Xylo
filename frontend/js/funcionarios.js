@@ -41,7 +41,7 @@ async function telaFuncionarios() {
       if (!$('#lista-func')) return;
       funcionarios = r.funcionarios;
       livres = r.motoristas_livres;
-      motoristas = op.motoristas || [];
+      motoristas = op.motoristas_nomes || op.motoristas || [];
       desenhar();
     } catch (erro) {
       $('#lista-func').className = 'aviso-erro';
@@ -118,10 +118,10 @@ async function telaFuncionarios() {
         <fieldset class="bloco-comissao">
           <legend><label class="opcao"><input type="checkbox" id="eh-motorista" ${motorista ? 'checked' : ''}> É motorista (recebe comissão por carga)</label></legend>
           <div id="campos-motorista" ${motorista ? '' : 'hidden'}>
-            <div class="campo"><label>Nome do motorista nas cargas *</label>
-              <input name="motorista" list="lista-motoristas-func" autocomplete="off" value="${esc(f.motorista)}" placeholder="Como aparece nas viagens (ex.: POPO)">
+            <div class="campo"><label>Nome do motorista nas cargas e no ticket</label>
+              <input name="motorista" list="lista-motoristas-func" autocomplete="off" value="${esc(f.motorista)}" placeholder="Apelido, se usar (ex.: POPO). Vazio = o nome dele">
               <datalist id="lista-motoristas-func">${motoristas.map((m) => `<option value="${esc(m.nome)}">`).join('')}</datalist>
-              <small>É por este nome que a folha encontra as viagens e os fretes que ele fez.</small></div>
+              <small>Só motoristas cadastrados aqui podem ser escolhidos nas viagens e nos fretes. A folha encontra as cargas dele por este nome.</small></div>
             <p class="rotulo-faixas">Comissão por tonelada, conforme a distância da rota
               ${funcionarios.some((x) => x.id !== f.id && x.faixas.length) ? `<select id="copiar-faixas" aria-label="Copiar faixas de outro motorista"><option value="">Copiar faixas de…</option>
                 ${funcionarios.filter((x) => x.id !== f.id && x.faixas.length).map((x) => `<option value="${x.id}">${esc(x.nome)}</option>`).join('')}</select>` : ''}</p>
@@ -160,7 +160,7 @@ async function telaFuncionarios() {
         km_ate: l.querySelector('[name=km_ate]').value.trim(),
         valor_tonelada: l.querySelector('[name=valor_tonelada]').value.trim(),
       }));
-      if (motoristaMarcado && !dados.motorista.trim()) throw new Error('Informe o nome do motorista como aparece nas cargas.');
+      if (motoristaMarcado && !dados.motorista.trim()) dados.motorista = dados.nome; // sem apelido: usa o nome do funcionário
       const corpo = {
         nome: dados.nome, cargo: dados.cargo, data_admissao: dados.data_admissao, cpf: soDigitos(dados.cpf),
         telefone: soDigitos(dados.telefone), salario_base: dados.salario_base, alimentacao: dados.alimentacao, observacoes: dados.observacoes,

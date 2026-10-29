@@ -20,6 +20,7 @@
 // O resto do ticket (CNPJ, endereço, telefone) é ignorado.
 // =====================================================================
 const { query } = require('../config/db');
+const { motoristasCadastrados, AVISO_CADASTRO } = require('../utils/motoristas');
 const { norm } = require('../importacao/importador');
 
 // ---------------------------------------------------------------------
@@ -279,12 +280,12 @@ async function ligarCadastros(empresaId, lido) {
     query('SELECT id, nome FROM florestas WHERE empresa_id = $1 AND ativo', [empresaId]),
     query('SELECT id, nome FROM empreiteiros WHERE empresa_id = $1 AND ativo', [empresaId]),
     query('SELECT id, nome FROM classes_madeira WHERE empresa_id = $1 AND ativo', [empresaId]),
-    query('SELECT id, nome FROM motoristas WHERE empresa_id = $1 AND ativo', [empresaId]),
+    motoristasCadastrados(query, empresaId).then((rows) => ({ rows })),
   ])).map((r) => r.rows);
 
   const campos = {
     ticket: lido.ticket, data: lido.data, hora_pesagem: lido.hora_pesagem, placa: lido.placa,
-    motorista: lido.motorista, peso_liquido: lido.peso_liquido,
+    motorista: lido.motorista, motorista_id: null, peso_liquido: lido.peso_liquido,
     cliente_id: null, floresta_id: null, empreiteiro_id: null, classe_id: null,
   };
   // origem de cada campo: 'ticket' (lido) ou 'placa' (sugerido pela última viagem da placa)
@@ -292,10 +293,13 @@ async function ligarCadastros(empresaId, lido) {
   for (const c of ['ticket', 'data', 'hora_pesagem', 'placa', 'motorista', 'peso_liquido']) if (campos[c] !== null) origem[c] = 'ticket';
   const avisos = [...lido.avisos];
 
-  // Motorista já cadastrado com outra grafia (JUNIOR / Júnior)
+  // Motorista: só vale se estiver cadastrado (Funcionários, "É motorista"); aceita outra grafia (JUNIOR / Júnior)
+  // e o nome do funcionário (ex.: ticket "ODAIR" -> funcionário Odair, que nas cargas é "TIO DAIA")
   if (lido.motorista) {
-    const m = motoristas.find((x) => norm(x.nome) === norm(lido.motorista));
-    if (m) campos.motorista = m.nome;
+    const m = motoristas.find((x) => norm(x.nome) === norm(lido.motorista) || norm(x.funcionario) === norm(lido.motorista))
+      || acharPorNome(lido.motorista, motoristas);
+    if (m) { campos.motorista = m.nome; campos.motorista_id = m.id; origem.motorista_id = 'ticket'; }
+    else avisos.push(`O motorista "${lido.motorista}" do ticket não está cadastrado. ${AVISO_CADASTRO}`);
   }
 
   // Cliente: normalmente é o dono da balança (emissor); senão a "entidade"
@@ -312,7 +316,7 @@ async function ligarCadastros(empresaId, lido) {
   let ultimaDaPlaca = null;
   if (lido.placa) {
     const { rows } = await query(
-      `SELECT v.cliente_id, v.floresta_id, v.empreiteiro_id, v.classe_id, v.numero_viagem,
+      `SELECT v.cliente_id, v.floresta_id, v.empreiteiro_id, v.classe_id, v.motorista_id, v.numero_viagem,
               to_char(v.data, 'YYYY-MM-DD') AS data, c.nome AS cliente
          FROM viagens v JOIN clientes c ON c.id = v.cliente_id
         WHERE v.empresa_id = $1 AND v.status <> 'Cancelada'
@@ -320,8 +324,8 @@ async function ligarCadastros(empresaId, lido) {
         ORDER BY v.data DESC, v.id DESC LIMIT 1`, [empresaId, lido.placa]);
     if (rows.length) {
       ultimaDaPlaca = rows[0];
-      const ativos = { cliente_id: clientes, floresta_id: florestas, empreiteiro_id: empreiteiros, classe_id: classes };
-      for (const c of ['cliente_id', 'floresta_id', 'empreiteiro_id', 'classe_id']) {
+      const ativos = { cliente_id: clientes, floresta_id: florestas, empreiteiro_id: empreiteiros, classe_id: classes, motorista_id: motoristas };
+      for (const c of ['cliente_id', 'floresta_id', 'empreiteiro_id', 'classe_id', 'motorista_id']) {
         const id = ultimaDaPlaca[c];
         if (campos[c] === null && id && ativos[c].some((x) => x.id === id)) { campos[c] = id; origem[c] = 'sugerido'; }
       }
@@ -363,6 +367,7 @@ async function ligarCadastros(empresaId, lido) {
   if (!campos.cliente_id) faltando.push('cliente');
   if (!campos.floresta_id) faltando.push('floresta');
   if (!campos.classe_id) faltando.push('classe');
+  if (!campos.motorista_id) faltando.push('motorista');
 
   return {
     campos,
@@ -408,13 +413,16 @@ async function ligarFrete(empresaId, lido) {
   const origem = {};
   const obs = [lido.ticket && `Ticket ${lido.ticket}`, lido.placa && `placa ${lido.placa}`, lido.motorista && `motorista ${lido.motorista}`]
     .filter(Boolean).join(' · ') || null;
-  const motoristas = (await query('SELECT nome FROM motoristas WHERE empresa_id = $1 AND ativo', [empresaId])).rows;
-  const motorista = lido.motorista ? (motoristas.find((m) => norm(m.nome) === norm(lido.motorista))?.nome || lido.motorista) : null;
+  const motoristas = await motoristasCadastrados(query, empresaId);
+  const achado = lido.motorista
+    ? motoristas.find((m) => norm(m.nome) === norm(lido.motorista) || norm(m.funcionario) === norm(lido.motorista)) || acharPorNome(lido.motorista, motoristas)
+    : null;
+  if (lido.motorista && !achado) avisos.push(`O motorista "${lido.motorista}" do ticket não está cadastrado. ${AVISO_CADASTRO}`);
   const campos = {
     data: lido.data, toneladas: lido.peso_liquido, cliente_id: null, destino: null,
-    cobranca: 'tonelada', valor_tonelada: null, observacoes: obs, motorista,
+    cobranca: 'tonelada', valor_tonelada: null, observacoes: obs, motorista: achado ? achado.nome : lido.motorista, motorista_id: achado ? achado.id : null,
   };
-  for (const c of ['data', 'toneladas', 'observacoes', 'motorista']) if (campos[c] !== null) origem[c] = 'ticket';
+  for (const c of ['data', 'toneladas', 'observacoes', 'motorista', 'motorista_id']) if (campos[c] !== null) origem[c] = 'ticket';
 
   const cliente = acharPorNome(lido.emissor, clientes) || acharPorNome(lido.entidade, clientes);
   if (cliente) { campos.cliente_id = cliente.id; origem.cliente_id = 'ticket'; }
@@ -468,6 +476,7 @@ async function ligarFrete(empresaId, lido) {
   if (!campos.toneladas) faltando.push('toneladas');
   if (!campos.cliente_id) faltando.push('cliente');
   if (!campos.valor_tonelada) faltando.push('valor do frete');
+  if (!campos.motorista_id) faltando.push('motorista');
 
   return {
     campos, origem, avisos, faltando, duplicada,

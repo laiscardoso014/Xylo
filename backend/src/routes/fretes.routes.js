@@ -16,7 +16,7 @@ const express = require('express');
 const { body, param, query: q, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { autenticar, podeEditar, somenteAdmin } = require('../middlewares/auth');
-const { idDoMotorista } = require('../utils/motoristas');
+const { motoristaDaCarga } = require('../utils/motoristas');
 const { lerNumero, numeroValido } = require('../utils/numeros');
 
 const router = express.Router();
@@ -64,6 +64,7 @@ const regrasFrete = [
   body('data_pagamento').optional({ values: 'falsy' }).isISO8601().withMessage('Data de pagamento inválida.'),
   body('destino').optional({ values: 'falsy' }).isLength({ max: 100 }).withMessage('Destino muito longo.'),
   body('numero_carga').optional({ values: 'falsy' }).isLength({ max: 20 }).withMessage('Nº da carga muito longo.'),
+  body('motorista_id').optional({ values: 'falsy' }).isInt({ min: 1 }).withMessage('Motorista inválido.'),
   body('motorista').optional({ values: 'falsy' }).isString().isLength({ max: 150 }).withMessage('Nome do motorista muito longo.'),
 ];
 
@@ -135,6 +136,8 @@ router.post('/', podeEditar, regrasFrete, validar, async (req, res, next) => {
     if (!(await clienteDaEmpresa(req.usuario.empresaId, b.cliente_id))) {
       return res.status(400).json({ erro: 'Escolha um cliente válido.' });
     }
+    const mot = await motoristaDaCarga(query, req.usuario.empresaId, b);
+    if (mot.erro) return res.status(400).json({ erro: mot.erro });
     const v = valoresDoFrete(b);
     const { rows } = await query(
       `INSERT INTO fretes (empresa_id, numero_carga, data, cliente_id, destino, toneladas,
@@ -150,7 +153,7 @@ router.post('/', podeEditar, regrasFrete, validar, async (req, res, next) => {
         req.usuario.empresaId, textoOuNulo(b.numero_carga), b.data, b.cliente_id, textoOuNulo(b.destino),
         lerNumero(b.toneladas), v.valorTonelada, v.valorFechado, b.forma_pagamento || null,
         v.status, v.dataPagamento, textoOuNulo(b.observacoes), req.usuario.id,
-        await idDoMotorista(query, req.usuario.empresaId, b.motorista),
+        mot.id,
       ]
     );
     const novo = await query(`${SELECT_FRETES} WHERE fr.id = $1`, [rows[0].id]);
@@ -166,12 +169,14 @@ router.post('/', podeEditar, regrasFrete, validar, async (req, res, next) => {
 router.put('/:id', podeEditar, [param('id').isInt({ min: 1 }), ...regrasFrete], validar, async (req, res, next) => {
   try {
     const b = req.body;
-    const atual = await query('SELECT status_pagamento FROM fretes WHERE id = $1 AND empresa_id = $2', [req.params.id, req.usuario.empresaId]);
+    const atual = await query('SELECT status_pagamento, motorista_id FROM fretes WHERE id = $1 AND empresa_id = $2', [req.params.id, req.usuario.empresaId]);
     if (!atual.rowCount) return res.status(404).json({ erro: 'Frete não encontrado.' });
     if (atual.rows[0].status_pagamento === 'Cancelado') return res.status(400).json({ erro: 'Frete cancelado não pode ser alterado.' });
     if (!(await clienteDaEmpresa(req.usuario.empresaId, b.cliente_id))) {
       return res.status(400).json({ erro: 'Escolha um cliente válido.' });
     }
+    const mot = await motoristaDaCarga(query, req.usuario.empresaId, b, atual.rows[0].motorista_id);
+    if (mot.erro) return res.status(400).json({ erro: mot.erro });
     const v = valoresDoFrete(b);
     await query(
       `UPDATE fretes SET
@@ -183,7 +188,7 @@ router.put('/:id', podeEditar, [param('id').isInt({ min: 1 }), ...regrasFrete], 
         req.params.id, req.usuario.empresaId, textoOuNulo(b.numero_carga), b.data, b.cliente_id, textoOuNulo(b.destino),
         lerNumero(b.toneladas), v.valorTonelada, v.valorFechado, b.forma_pagamento || null,
         v.status, v.dataPagamento, textoOuNulo(b.observacoes),
-        await idDoMotorista(query, req.usuario.empresaId, b.motorista),
+        mot.id,
       ]
     );
     const { rows } = await query(`${SELECT_FRETES} WHERE fr.id = $1`, [req.params.id]);

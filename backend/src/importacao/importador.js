@@ -22,7 +22,7 @@
 const { query, pool } = require('../config/db');
 const { lerNumero } = require('../utils/numeros');
 const { documentoValido, telefoneValido } = require('../utils/documentos');
-const { idDoMotorista } = require('../utils/motoristas');
+const { idDoMotorista, motoristasCadastrados } = require('../utils/motoristas');
 
 const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[º°ª]/g, '').replace(/[^a-z0-9$/ ]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -276,16 +276,23 @@ async function analisar(empresaId, pasta, opcoes) {
 }
 
 async function analisarViagens(empresaId, brutas, opcoes) {
-  const [cli, flo, emp, cla] = await Promise.all([
+  const [cli, flo, emp, cla, mot] = await Promise.all([
     query('SELECT id, nome, ativo FROM clientes WHERE empresa_id = $1', [empresaId]),
     query('SELECT id, nome, ativo FROM florestas WHERE empresa_id = $1', [empresaId]),
     query('SELECT id, nome, ativo FROM empreiteiros WHERE empresa_id = $1', [empresaId]),
     query('SELECT id, nome FROM classes_madeira WHERE empresa_id = $1', [empresaId]),
+    motoristasCadastrados(query, empresaId),
   ]);
   const indice = (rows) => new Map(rows.map((r) => [chaveNome(r.nome), r]));
-  const mapas = { cliente: indice(cli.rows), floresta: indice(flo.rows), empreiteiro: indice(emp.rows) };
+  // motorista: só os cadastrados como funcionário (pelo nome nas cargas ou pelo nome do funcionário)
+  const mapaMotoristas = new Map();
+  mot.forEach((m) => {
+    mapaMotoristas.set(chaveNome(m.funcionario), { id: m.id, nome: m.nome, ativo: true });
+    mapaMotoristas.set(chaveNome(m.nome), { id: m.id, nome: m.nome, ativo: true });
+  });
+  const mapas = { cliente: indice(cli.rows), floresta: indice(flo.rows), empreiteiro: indice(emp.rows), motorista: mapaMotoristas };
   const clienteFixo = opcoes.clienteFixo ? cli.rows.find((c) => c.id === Number(opcoes.clienteFixo)) : null;
-  const novos = { cliente: new Map(), floresta: new Map(), empreiteiro: new Map() };
+  const novos = { cliente: new Map(), floresta: new Map(), empreiteiro: new Map(), motorista: new Map() };
 
   // Viagens já lançadas nos meses da planilha (para achar duplicadas)
   const datas = brutas.map((b) => paraData(b.valores.data)).filter(Boolean);
@@ -317,7 +324,7 @@ async function analisarViagens(empresaId, brutas, opcoes) {
       // (os cadastros novos aparecem uma vez só, no resumo acima da tabela)
       return { id: null, novo: chave, nome: String(nome).trim() };
     }
-    erros.push(`${tipo[0].toUpperCase()}${tipo.slice(1)} "${String(nome).trim()}" não está cadastrado.`);
+    erros.push(`${tipo[0].toUpperCase()}${tipo.slice(1)} "${String(nome).trim()}" não está cadastrado${tipo === 'motorista' ? ' (Pessoal › Funcionários, "É motorista")' : ''}.`);
     return null;
   };
 
@@ -349,6 +356,10 @@ async function analisarViagens(empresaId, brutas, opcoes) {
     } else {
       empreiteiro = resolver('empreiteiro', v.empreiteiro, erros, avisos, false);
     }
+    // Motorista: tem que estar cadastrado (ou ser criado como funcionário, com "criar cadastros").
+    // Planilha antiga sem motorista na linha: importa sem (só a importação aceita).
+    const motoristaRef = vazio(v.motorista) ? null : resolver('motorista', paraTexto(v.motorista), erros, avisos, false);
+    if (vazio(v.motorista)) avisos.push('Sem motorista na planilha: importada sem motorista.');
     const classe = acharClasse(v.classe, cla.rows);
     if (classe && ['lixo', 'fina', 'media', 'grossa', 'eucal'].filter((k) => norm(v.classe).includes(k)).length > 1) {
       avisos.push(`Classe "${v.classe}" cita mais de uma: importada como ${classe.nome}.`);
@@ -393,23 +404,23 @@ async function analisarViagens(empresaId, brutas, opcoes) {
     const hora = typeof v.hora === 'string' && /^\d{1,2}:\d{2}/.test(v.hora) ? v.hora.slice(0, 5) : null;
     const volume = paraNumero(v.volume_m3);
     const obs = paraTexto(v.observacoes) || null;
-    const motorista = vazio(v.motorista) ? null : paraTexto(v.motorista);
+    const motorista = motoristaRef;
 
     linhas.push({
       linha: b.linha, bloco: b.bloco, status, erros, avisos,
       dados: {
         data, ticket, placa, peso: Number.isFinite(peso) ? peso : null, valor_tonelada: valorTon,
         cliente: cliente?.nome || (vazio(nomeCliente) ? null : String(nomeCliente)), floresta: floresta?.nome || paraTexto(v.floresta),
-        empreiteiro: empreiteiro?.nome || null, classe: classe?.nome || paraTexto(v.classe), hora, motorista,
+        empreiteiro: empreiteiro?.nome || null, classe: classe?.nome || paraTexto(v.classe), hora, motorista: motorista?.nome || null,
       },
       _gravar: { data, ticket, placa, peso, valorTon, valorFloresta, valorEmpreiteiro, cliente, floresta, empreiteiro, classe, hora, motorista, volume: Number.isFinite(volume) && volume > 0 ? volume : null, obs },
     });
   }
 
   // Cadastros novos só entram se alguma linha que vai ser importada usar
-  const usados = { cliente: new Set(), floresta: new Set(), empreiteiro: new Set() };
+  const usados = { cliente: new Set(), floresta: new Set(), empreiteiro: new Set(), motorista: new Set() };
   linhas.filter((l) => l.status === 'importar').forEach((l) => {
-    ['cliente', 'floresta', 'empreiteiro'].forEach((t) => { if (l._gravar[t]?.novo) usados[t].add(l._gravar[t].novo); });
+    ['cliente', 'floresta', 'empreiteiro', 'motorista'].forEach((t) => { if (l._gravar[t]?.novo) usados[t].add(l._gravar[t].novo); });
   });
   const listaNovos = (t) => [...novos[t]].filter(([k]) => usados[t].has(k)).map(([, nome]) => nome);
 
@@ -431,7 +442,7 @@ async function analisarViagens(empresaId, brutas, opcoes) {
       erros: linhas.filter((l) => l.status === 'erro').length,
       toneladas: Math.round(linhas.filter((l) => l.status === 'importar').reduce((t, l) => t + l._gravar.peso, 0) * 100) / 100,
     },
-    novos: { clientes: listaNovos('cliente'), florestas: listaNovos('floresta'), empreiteiros: listaNovos('empreiteiro') },
+    novos: { clientes: listaNovos('cliente'), florestas: listaNovos('floresta'), empreiteiros: listaNovos('empreiteiro'), motoristas: listaNovos('motorista') },
   };
 }
 
@@ -615,16 +626,16 @@ async function analisarCadastros(empresaId, brutas, tipo) {
 // ---------------------------------------------------------------------
 async function gravar(empresaId, usuarioId, analise, origem) {
   const aGravar = analise.linhas.filter((l) => l.status === 'importar');
-  if (!aGravar.length) return { importadas: 0, novos: { clientes: 0, florestas: 0, empreiteiros: 0 } };
+  if (!aGravar.length) return { importadas: 0, novos: { clientes: 0, florestas: 0, empreiteiros: 0, motoristas: 0 } };
   const cliente = await pool.connect();
   try {
     await cliente.query('BEGIN');
     let importadas = 0;
-    const criados = { clientes: 0, florestas: 0, empreiteiros: 0 };
+    const criados = { clientes: 0, florestas: 0, empreiteiros: 0, motoristas: 0 };
 
     if (analise.tipo === 'viagens') {
       // 1) cadastros novos (só os usados)
-      const ids = { cliente: new Map(), floresta: new Map(), empreiteiro: new Map() };
+      const ids = { cliente: new Map(), floresta: new Map(), empreiteiro: new Map(), motorista: new Map() };
       const tabelas = { cliente: ['clientes', 'clientes', false], floresta: ['florestas', 'florestas', true], empreiteiro: ['empreiteiros', 'empreiteiros', true] };
       for (const l of aGravar) {
         for (const t of ['cliente', 'floresta', 'empreiteiro']) {
@@ -634,6 +645,21 @@ async function gravar(empresaId, usuarioId, analise, origem) {
           const r = await cliente.query(`INSERT INTO ${tabela} (empresa_id, nome) VALUES ($1, ${maiusculo ? 'upper($2)' : '$2'}) RETURNING id`, [empresaId, ref.nome]);
           ids[t].set(ref.novo, r.rows[0].id);
           criados[conta]++;
+        }
+        // motorista novo: vira FUNCIONÁRIO (cargo Motorista, salário zerado para completar) + nome nas cargas
+        const ref = l._gravar.motorista;
+        if (ref && ref.novo && !ids.motorista.has(ref.novo)) {
+          const executar = (sql, p) => cliente.query(sql, p);
+          const motoristaId = await idDoMotorista(executar, empresaId, ref.nome);
+          const ligado = await cliente.query('SELECT 1 FROM funcionarios WHERE motorista_id = $1', [motoristaId]);
+          if (!ligado.rowCount) {
+            await cliente.query(
+              `INSERT INTO funcionarios (empresa_id, nome, cargo, salario_base, observacoes, motorista_id)
+               VALUES ($1, $2, 'Motorista', 0, $3, $4)`,
+              [empresaId, ref.nome, `Criado pela importação de ${origem}: complete salário, CPF e as faixas de comissão.`, motoristaId]);
+          }
+          ids.motorista.set(ref.novo, motoristaId);
+          criados.motoristas++;
         }
       }
       // 2) viagens em ordem de data (o nº da viagem segue a sequência do mês de cada cliente)
@@ -652,7 +678,7 @@ async function gravar(empresaId, usuarioId, analise, origem) {
                    $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
           [empresaId, g.data, g.ticket, g.placa, id('cliente'), id('floresta'), id('empreiteiro'), g.classe.id,
             g.peso, g.valorTon, g.hora, g.volume, obs.slice(0, 2000), usuarioId,
-            await idDoMotorista((sql, p) => cliente.query(sql, p), empresaId, g.motorista),
+            g.motorista ? (g.motorista.id || ids.motorista.get(g.motorista.novo)) : null,
             g.valorFloresta ?? null, g.valorEmpreiteiro ?? null]
         );
         importadas++;

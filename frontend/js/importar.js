@@ -219,7 +219,7 @@ async function telaImportar() {
           <h3><i class="fas fa-circle-check"></i> Importação concluída</h3>
           <p><strong>${res.importadas}</strong> ${res.importadas === 1 ? 'linha importada' : 'linhas importadas'} da aba "${esc(estado.analise.aba)}".
             ${res.duplicadas ? `${res.duplicadas} já existiam e ficaram de fora.` : ''} ${res.erros ? `${res.erros} com erro ficaram de fora.` : ''}</p>
-          ${criados ? `<p>Cadastros criados: ${esc(criados)}. Lembre de completar os dados deles (CNPJ, telefone).</p>` : ''}
+          ${criados ? `<p>Cadastros criados: ${esc(criados)}. Lembre de completar os dados deles (CNPJ, telefone; dos motoristas, salário e faixas de comissão em Funcionários).</p>` : ''}
           <div class="acoes-form">
             ${estado.tipo === 'viagens' && meses.length ? `<a class="btn btn-primario" href="#viagens" data-mes="${meses[0]}" id="ver-importadas">Ver viagens de ${esc(meses[0].split('-').reverse().join('/'))}</a>` : ''}
             ${estado.tipo === 'fretes' && meses.length ? `<a class="btn btn-primario" href="#fretes" data-mes="${meses[0]}" id="ver-fretes-importados">Ver fretes de ${esc(meses[0].split('-').reverse().join('/'))}</a>` : ''}

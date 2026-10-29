@@ -21,7 +21,7 @@ const { body, param, query: q, validationResult } = require('express-validator')
 const { query } = require('../config/db');
 const { autenticar, podeEditar, somenteAdmin } = require('../middlewares/auth');
 const { lerNumero, numeroValido } = require('../utils/numeros');
-const { idDoMotorista } = require('../utils/motoristas');
+const { motoristaDaCarga, motoristasCadastrados } = require('../utils/motoristas');
 
 const router = express.Router();
 router.use(autenticar);
@@ -51,7 +51,7 @@ const SELECT_VIAGENS = `
          v.valor_ton_floresta, v.total_floresta,
          v.valor_ton_empreiteiro, v.total_empreiteiro,
          v.status, v.observacoes, v.criado_por,
-         to_char(v.hora_pesagem, 'HH24:MI') AS hora_pesagem, m.nome AS motorista
+         to_char(v.hora_pesagem, 'HH24:MI') AS hora_pesagem, v.motorista_id, m.nome AS motorista
     FROM viagens v
     LEFT JOIN motoristas m   ON m.id = v.motorista_id
     JOIN clientes c          ON c.id = v.cliente_id
@@ -99,6 +99,8 @@ const regrasViagem = [
   body('numero_viagem').optional({ values: 'falsy' }).isLength({ max: 20 }).withMessage('Nº da viagem muito longo.'),
   body('ticket').optional({ values: 'falsy' }).isLength({ max: 30 }).withMessage('Ticket muito longo.'),
   body('placa').optional({ values: 'falsy' }).isLength({ max: 20 }).withMessage('Placa muito longa.'),
+  // motorista: tem que estar cadastrado (Funcionários, "É motorista"); conferido em motoristaDaCarga
+  body('motorista_id').optional({ values: 'falsy' }).isInt({ min: 1 }).withMessage('Motorista inválido.'),
   body('motorista').optional({ values: 'falsy' }).isString().isLength({ max: 150 }).withMessage('Nome do motorista muito longo.'),
   body('hora_pesagem').optional({ values: 'falsy' }).matches(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).withMessage('Horário da pesagem inválido (use HH:MM).'),
 ];
@@ -117,9 +119,12 @@ router.get('/opcoes', async (req, res, next) => {
       query('SELECT id, nome FROM empreiteiros WHERE empresa_id = $1 AND ativo ORDER BY nome', [e]),
       query(`SELECT id, nome FROM classes_madeira WHERE empresa_id = $1 AND ativo
               ORDER BY CASE nome WHEN 'Lixo' THEN 1 WHEN 'Fina' THEN 2 WHEN 'Média' THEN 3 WHEN 'Grossa' THEN 4 ELSE 5 END`, [e]),
-      query('SELECT id, nome FROM motoristas WHERE empresa_id = $1 AND ativo ORDER BY nome', [e]),
+      motoristasCadastrados(query, e),
     ]);
-    res.json({ clientes: clientes.rows, florestas: florestas.rows, empreiteiros: empreiteiros.rows, classes: classes.rows, motoristas: motoristas.rows });
+    // motoristas: só os cadastrados como funcionário ativo; motoristas_nomes: todos os nomes já usados (tela Funcionários)
+    const nomes = await query('SELECT id, nome FROM motoristas WHERE empresa_id = $1 AND ativo ORDER BY nome', [e]);
+    res.json({ clientes: clientes.rows, florestas: florestas.rows, empreiteiros: empreiteiros.rows, classes: classes.rows,
+      motoristas, motoristas_nomes: nomes.rows });
   } catch (err) {
     next(err);
   }
@@ -223,6 +228,8 @@ router.post('/', podeEditar, regrasViagem, validar, async (req, res, next) => {
     const b = req.body;
     const invalido = await cadastrosDaEmpresa(req.usuario.empresaId, b);
     if (invalido) return res.status(400).json({ erro: invalido });
+    const mot = await motoristaDaCarga(query, req.usuario.empresaId, b);
+    if (mot.erro) return res.status(400).json({ erro: mot.erro });
 
     const { rows } = await query(
       `INSERT INTO viagens (empresa_id, numero_viagem, data, ticket, placa, cliente_id, floresta_id,
@@ -239,7 +246,7 @@ router.post('/', podeEditar, regrasViagem, validar, async (req, res, next) => {
         req.usuario.empresaId, textoOuNulo(b.numero_viagem), b.data, textoOuNulo(b.ticket), textoOuNulo(b.placa),
         b.cliente_id, b.floresta_id, idOuNulo(b.empreiteiro_id), b.classe_id,
         lerNumero(b.peso_liquido), valorOuNulo(b.valor_tonelada), textoOuNulo(b.observacoes), req.usuario.id,
-        await idDoMotorista(query, req.usuario.empresaId, b.motorista), horaOuNula(b.hora_pesagem),
+        mot.id, horaOuNula(b.hora_pesagem),
         valorOuNulo(b.valor_ton_floresta), idOuNulo(b.empreiteiro_id) ? valorOuNulo(b.valor_ton_empreiteiro) : null,
       ]
     );
@@ -257,12 +264,14 @@ router.post('/', podeEditar, regrasViagem, validar, async (req, res, next) => {
 router.put('/:id', podeEditar, [param('id').isInt({ min: 1 }), ...regrasViagem], validar, async (req, res, next) => {
   try {
     const b = req.body;
-    const atual = await query('SELECT status FROM viagens WHERE id = $1 AND empresa_id = $2', [req.params.id, req.usuario.empresaId]);
+    const atual = await query('SELECT status, motorista_id FROM viagens WHERE id = $1 AND empresa_id = $2', [req.params.id, req.usuario.empresaId]);
     if (!atual.rowCount) return res.status(404).json({ erro: 'Viagem não encontrada.' });
     if (atual.rows[0].status === 'Cancelada') return res.status(400).json({ erro: 'Viagem cancelada não pode ser alterada.' });
 
     const invalido = await cadastrosDaEmpresa(req.usuario.empresaId, b);
     if (invalido) return res.status(400).json({ erro: invalido });
+    const mot = await motoristaDaCarga(query, req.usuario.empresaId, b, atual.rows[0].motorista_id);
+    if (mot.erro) return res.status(400).json({ erro: mot.erro });
 
     await query(
       `UPDATE viagens SET
@@ -276,7 +285,7 @@ router.put('/:id', podeEditar, [param('id').isInt({ min: 1 }), ...regrasViagem],
         req.params.id, req.usuario.empresaId, textoOuNulo(b.numero_viagem), b.data, textoOuNulo(b.ticket), textoOuNulo(b.placa),
         b.cliente_id, b.floresta_id, idOuNulo(b.empreiteiro_id), b.classe_id,
         lerNumero(b.peso_liquido), valorOuNulo(b.valor_tonelada), textoOuNulo(b.observacoes),
-        await idDoMotorista(query, req.usuario.empresaId, b.motorista), horaOuNula(b.hora_pesagem),
+        mot.id, horaOuNula(b.hora_pesagem),
         valorOuNulo(b.valor_ton_floresta), idOuNulo(b.empreiteiro_id) ? valorOuNulo(b.valor_ton_empreiteiro) : null,
       ]
     );

@@ -111,7 +111,7 @@ async function salvar(req, res, next, id = null) {
       const outro = await c.query('SELECT nome FROM funcionarios WHERE motorista_id = $1 AND id <> COALESCE($2, 0)', [motoristaId, id]);
       if (outro.rowCount) {
         await c.query('ROLLBACK');
-        return res.status(409).json({ erro: `O motorista "${b.motorista.trim()}" já está ligado ao funcionário ${outro.rows[0].nome}.` });
+        return res.status(409).json({ erro: `O motorista "${b.motorista.trim()}" já está ligado ao funcionário ${outro.rows[0].nome}. Edite o cadastro dele em vez de criar outro.` });
       }
     }
     const valores = [e, b.nome.trim(), b.cargo.trim(), b.cpf ? String(b.cpf).replace(/\D/g, '') : null, textoOuNulo(b.telefone)?.replace(/\D/g, '') || null,

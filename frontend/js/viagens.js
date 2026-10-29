@@ -154,8 +154,7 @@ async function telaViagens() {
           ${select('classe_id', 'Classe', opcoes.classes, v.classe_id)}
           <div class="campo"><label>Ticket</label><input name="ticket" maxlength="30" value="${esc(v.ticket)}"></div>
           <div class="campo"><label>Placa</label><input name="placa" maxlength="20" value="${esc(v.placa)}" placeholder="ABC1D23"></div>
-          <div class="campo"><label>Motorista</label><input name="motorista" maxlength="150" list="lista-motoristas" autocomplete="off" value="${esc(v.motorista)}">
-            <datalist id="lista-motoristas">${(opcoes.motoristas || []).map((m) => `<option value="${esc(m.nome)}">`).join('')}</datalist></div>
+          ${campoMotorista(opcoes.motoristas || [], v.motorista_id, v.motorista, { podeCadastrar: PERFIL.podeEditar })}
           <div class="campo"><label>Horário da pesagem</label><input name="hora_pesagem" type="time" value="${esc(v.hora_pesagem)}"></div>
           <div class="campo"><label>Peso líquido (t) *</label><input name="peso_liquido" required inputmode="decimal" placeholder="Ex.: 46,79"
               value="${esc(pesoDigitado)}"></div>
@@ -184,7 +183,7 @@ async function telaViagens() {
     let consulta = 0;
 
     // Destaca o que veio do ticket (verde) ou da última viagem da placa (roxo)
-    if (leitura) marcarLidos(form, leitura, ['cliente_id', 'floresta_id', 'classe_id', 'peso_liquido', 'data']);
+    if (leitura) marcarLidos(form, leitura, ['cliente_id', 'floresta_id', 'classe_id', 'motorista_id', 'peso_liquido', 'data']);
 
     const numero = (n) => { const x = lerNumero(campo(n).value); return Number.isFinite(x) ? x : null; };
 
@@ -300,9 +299,6 @@ async function telaViagens() {
       } else {
         const nova = await api('/viagens', { metodo: 'POST', corpo: dados });
         toast(`Viagem nº ${nova.numero_viagem} lançada: ${formatarMoeda(nova.valor_total)}.`);
-        if (dados.motorista && !(opcoes.motoristas || []).some((m) => m.nome.toLowerCase() === dados.motorista.trim().toLowerCase())) {
-          opcoes.motoristas = [...(opcoes.motoristas || []), { nome: dados.motorista.trim() }];
-        }
         // O mês da tela acompanha a data lançada
         if (nova.data.slice(0, 7) !== mesViagens) $('#mes-viagens').value = nova.data.slice(0, 7);
       }
@@ -317,7 +313,7 @@ async function telaViagens() {
       aoLer: (resultado, foto) => {
         const c = resultado.campos;
         formulario({
-          data: c.data || hojeISO(), ticket: c.ticket, placa: c.placa, motorista: c.motorista, hora_pesagem: c.hora_pesagem,
+          data: c.data || hojeISO(), ticket: c.ticket, placa: c.placa, motorista_id: c.motorista_id, hora_pesagem: c.hora_pesagem,
           peso_liquido: c.peso_liquido, cliente_id: c.cliente_id, floresta_id: c.floresta_id,
           empreiteiro_id: c.empreiteiro_id, classe_id: c.classe_id,
         }, { resultado, foto });
@@ -331,15 +327,19 @@ async function telaViagens() {
     const achar = (id) => viagens.find((v) => v.id === Number(id));
     try {
       if (alvo.id === 'btn-nova-viagem') {
-        if (!opcoes.clientes.length || !opcoes.florestas.length) {
-          toast('Cadastre antes pelo menos um cliente e uma floresta.', 'erro');
+        if (!opcoes.clientes.length || !opcoes.florestas.length || !(opcoes.motoristas || []).length) {
+          toast(!(opcoes.motoristas || []).length && opcoes.clientes.length && opcoes.florestas.length
+            ? 'Cadastre antes pelo menos um motorista em Pessoal › Funcionários (marque "É motorista").'
+            : 'Cadastre antes pelo menos um cliente, uma floresta e um motorista (em Funcionários).', 'erro');
           return;
         }
         formulario();
       }
       if (alvo.id === 'btn-ler-ticket') {
-        if (!opcoes.clientes.length || !opcoes.florestas.length) {
-          toast('Cadastre antes pelo menos um cliente e uma floresta.', 'erro');
+        if (!opcoes.clientes.length || !opcoes.florestas.length || !(opcoes.motoristas || []).length) {
+          toast(!(opcoes.motoristas || []).length && opcoes.clientes.length && opcoes.florestas.length
+            ? 'Cadastre antes pelo menos um motorista em Pessoal › Funcionários (marque "É motorista").'
+            : 'Cadastre antes pelo menos um cliente, uma floresta e um motorista (em Funcionários).', 'erro');
           return;
         }
         await lerTicket();
