@@ -52,6 +52,9 @@ app.use('/api/importacao', require('./routes/importacao.routes'));
 app.use('/api/tickets', require('./routes/tickets.routes'));       // leitura do ticket de pesagem
 app.use('/api/lixeira', require('./routes/lixeira.routes'));       // excluir com motivo / restaurar
 app.use('/api/historico', require('./routes/historico.routes'));   // auditoria (só admin)
+app.use('/api/funcionarios', require('./routes/funcionarios.routes')); // folha: cadastro e faixas de comissão
+app.use('/api/rotas', require('./routes/rotas.routes'));           // distâncias para a comissão
+app.use('/api/folha', require('./routes/folha.routes'));           // folha de pagamento e adiantamentos
 
 app.use((req, res) => {
   res.status(404).json({ erro: 'Rota não encontrada.' });

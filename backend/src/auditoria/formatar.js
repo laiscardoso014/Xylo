@@ -19,6 +19,11 @@ const TABELAS = {
   usuarios: { nome: 'Usuário', plural: 'Usuários', rota: 'usuarios' },
   categorias_despesa: { nome: 'Categoria de despesa', plural: 'Categorias de despesa', rota: 'despesas' },
   empresas: { nome: 'Empresa', plural: 'Dados da empresa', rota: 'empresa' },
+  funcionarios: { nome: 'Funcionário', plural: 'Funcionários', rota: 'funcionarios' },
+  folhas: { nome: 'Folha', plural: 'Folha de pagamento', rota: 'folha' },
+  adiantamentos: { nome: 'Adiantamento', plural: 'Adiantamentos', rota: 'folha' },
+  rotas: { nome: 'Rota', plural: 'Rotas e distâncias', rota: 'rotas' },
+  comissao_faixas: { nome: 'Faixa de comissão', plural: 'Faixas de comissão', rota: 'funcionarios' },
 };
 
 // Rótulo de cada campo (o que não está aqui não aparece)
@@ -36,12 +41,17 @@ const CAMPOS = {
   nome: 'Nome', razao_social: 'Razão social', cpf_cnpj: 'CPF/CNPJ', cnpj: 'CNPJ', telefone: 'Telefone', email: 'E-mail',
   cidade: 'Cidade', estado: 'UF', uf: 'UF', municipio: 'Município', proprietario: 'Proprietário', endereco: 'Endereço',
   ativo: 'Ativo', deve_trocar_senha: 'Senha provisória', senha: 'Senha', logo: 'Logo',
+  cargo: 'Cargo', cpf: 'CPF', data_admissao: 'Admissão', salario_base: 'Salário base', alimentacao: 'Alimentação',
+  competencia: 'Competência', comissao: 'Comissão', extras: 'Extras', adiantamento: 'Adiantamento', desconto: 'Desconto',
+  saldo_pagar: 'Saldo a pagar', comissao_manual: 'Comissão digitada à mão', funcionario_id: 'Funcionário',
+  parcelas: 'Parcelas', km: 'Distância', km_ate: 'Até (km)',
 };
-const DINHEIRO = new Set(['valor_tonelada', 'valor_total', 'valor_fechado', 'valor', 'valor_ton_floresta', 'total_floresta', 'valor_ton_empreiteiro', 'total_empreiteiro']);
+const DINHEIRO = new Set(['valor_tonelada', 'valor_total', 'valor_fechado', 'valor', 'valor_ton_floresta', 'total_floresta', 'valor_ton_empreiteiro', 'total_empreiteiro',
+  'salario_base', 'alimentacao', 'comissao', 'extras', 'adiantamento', 'desconto', 'saldo_pagar']);
 const PESO = new Set(['peso_liquido', 'toneladas']);
 const REFERENCIAS = {
   cliente_id: 'clientes', floresta_id: 'florestas', empreiteiro_id: 'empreiteiros', classe_id: 'classes',
-  motorista_id: 'motoristas', categoria_id: 'categorias', perfil_id: 'perfis',
+  motorista_id: 'motoristas', categoria_id: 'categorias', perfil_id: 'perfis', funcionario_id: 'funcionarios',
 };
 const TIPO_PRECO = { VENDA: 'Venda (cliente)', COMPRA: 'Compra (floresta)', EMPREITADA: 'Empreitada' };
 
@@ -65,7 +75,8 @@ async function carregarNomes(empresaId) {
     lista('SELECT id, nome FROM usuarios WHERE empresa_id = $1'),
     query('SELECT id, nome FROM perfis').then((r) => new Map(r.rows.map((x) => [x.id, x.nome]))),
   ]);
-  return { clientes, florestas, empreiteiros, classes, motoristas, categorias, usuarios, perfis };
+  const funcionarios = await lista('SELECT id, nome FROM funcionarios WHERE empresa_id = $1').catch(() => new Map());
+  return { clientes, florestas, empreiteiros, classes, motoristas, categorias, usuarios, perfis, funcionarios };
 }
 
 // Um valor de um campo, pronto para a tela
@@ -75,6 +86,8 @@ function valorTexto(campo, valor, nomes) {
   if (DINHEIRO.has(campo)) return dinheiro(valor);
   if (PESO.has(campo)) return `${numeroBR(valor)} t`;
   if (campo === 'volume_m3') return `${numeroBR(valor)} m³`;
+  if (campo === 'km' || campo === 'km_ate') return `${numeroBR(valor, 1)} km`;
+  if (campo === 'competencia') return `${String(valor).slice(5, 7)}/${String(valor).slice(0, 4)}`;
   if (typeof valor === 'boolean') return valor ? 'Sim' : 'Não';
   if (campo === 'tipo') return TIPO_PRECO[valor] || valor;
   if (campo === 'hora_pesagem') return String(valor).slice(0, 5);
@@ -112,6 +125,11 @@ function resumo(tabela, d, nomes) {
       n(d.cliente_id ? 'cliente_id' : d.floresta_id ? 'floresta_id' : 'empreiteiro_id'), n('classe_id'),
       `${n('valor_tonelada')}/t desde ${n('data_inicio')}`],
     usuarios: () => [`Usuário ${d.nome || ''}`.trim(), d.email],
+    funcionarios: () => [`Funcionário ${d.nome || ''}`.trim(), d.cargo],
+    folhas: () => [`Folha ${valorTexto('competencia', d.competencia, nomes)}`, n('funcionario_id')],
+    adiantamentos: () => ['Adiantamento', n('funcionario_id'), n('valor'), d.parcelas > 1 ? `${d.parcelas}x` : null],
+    rotas: () => [d.tipo === 'frete' ? `Rota de frete · ${n('cliente_id')}${d.destino ? ` → ${d.destino}` : ''}` : `Rota ${n('floresta_id')} → ${n('cliente_id')}`, d.km ? n('km') : null],
+    comissao_faixas: () => ['Faixa de comissão', n('funcionario_id'), d.km_ate ? `até ${n('km_ate')}` : 'acima', `${n('valor_tonelada')}/t`],
     empresas: () => ['Dados da empresa'],
   }[tabela];
   const lista = partes ? partes() : [`${TABELAS[tabela]?.nome || tabela} ${d.nome || ''}`.trim()];

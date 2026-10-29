@@ -113,6 +113,9 @@ const TELAS = {
   importar: { titulo: 'Importar planilha', desenhar: telaImportar, somenteEditor: true }, // js/importar.js
   empresa: { titulo: 'Dados da empresa', desenhar: telaEmpresa, somenteAdmin: true }, // js/perfil.js
   usuarios: { titulo: 'Usuários', desenhar: telaUsuarios, somenteAdmin: true },
+  funcionarios: { titulo: 'Funcionários', desenhar: telaFuncionarios, somenteEditor: true }, // js/funcionarios.js
+  folha: { titulo: 'Folha de pagamento', desenhar: telaFolha, somenteEditor: true },      // js/folha.js
+  rotas: { titulo: 'Rotas e distâncias', desenhar: telaRotas, somenteEditor: true },      // js/rotas.js
   lixeira: { titulo: 'Lixeira', desenhar: telaLixeira, somenteAdmin: true },       // js/auditoria.js
   historico: { titulo: 'Histórico', desenhar: telaHistorico, somenteAdmin: true }, // js/auditoria.js
 };

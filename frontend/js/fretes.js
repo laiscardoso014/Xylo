@@ -34,9 +34,12 @@ async function telaFretes() {
 
   let fretes = [];
   let clientes = [];
+  let motoristas = [];
 
   try {
-    clientes = (await api('/viagens/opcoes')).clientes;
+    const op = await api('/viagens/opcoes');
+    clientes = op.clientes;
+    motoristas = op.motoristas || [];
     $('#filtro-cliente-frete').insertAdjacentHTML('beforeend',
       clientes.map((c) => `<option value="${c.id}">${esc(c.nome)}</option>`).join(''));
   } catch (erro) {
@@ -78,7 +81,7 @@ async function telaFretes() {
   function desenhar() {
     const termo = $('#busca-frete').value.trim().toLowerCase();
     const lista = fretes.filter((f) => !termo
-      || [f.destino, f.numero_carga, f.cliente, f.forma_pagamento, f.observacoes].some((x) => String(x || '').toLowerCase().includes(termo)));
+      || [f.destino, f.numero_carga, f.cliente, f.motorista, f.forma_pagamento, f.observacoes].some((x) => String(x || '').toLowerCase().includes(termo)));
 
     const box = $('#lista-fretes');
     if (!lista.length) {
@@ -97,7 +100,7 @@ async function telaFretes() {
           ${lista.map((f) => `
             <tr class="${f.status_pagamento === 'Cancelado' ? 'inativo' : ''}">
               <td><strong>Nº ${esc(f.numero_carga)}</strong><div class="sub">${formatarDataISO(f.data)}</div></td>
-              <td>${esc(f.cliente)}<div class="sub">${esc(f.destino) || 'sem destino'}</div></td>
+              <td>${esc(f.cliente)}<div class="sub">${esc(f.destino) || 'sem destino'}${f.motorista ? ` · ${esc(f.motorista)}` : ''}</div></td>
               <td class="num">${formatarPeso(f.toneladas)}</td>
               <td class="num">${f.valor_fechado !== null ? 'valor fechado' : `${formatarMoeda(f.valor_tonelada)}/t`}</td>
               <td class="num"><strong>${formatarMoeda(f.valor_total)}</strong></td>
@@ -135,6 +138,9 @@ async function telaFretes() {
             <select name="cliente_id" required><option value="">Selecione…</option>
               ${lista.map((c) => `<option value="${c.id}" ${c.id === f.cliente_id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></div>
           <div class="campo"><label>Destino</label><input name="destino" maxlength="100" value="${esc(f.destino)}" placeholder="Ex.: Balneário"></div>
+          <div class="campo"><label>Motorista</label><input name="motorista" maxlength="150" list="lista-motoristas-frete" autocomplete="off" value="${esc(f.motorista)}">
+            <datalist id="lista-motoristas-frete">${motoristas.map((m) => `<option value="${esc(m.nome)}">`).join('')}</datalist>
+            <small>Conta na comissão dele (folha de pagamento)</small></div>
           <div class="campo"><label>Toneladas *</label><input name="toneladas" required inputmode="decimal" value="${decimal(f.toneladas)}" placeholder="Ex.: 46,57"></div>
           <div class="campo"><label>Cobrança *</label>
             <select name="cobranca">
@@ -212,7 +218,7 @@ async function telaFretes() {
             const c = resultado.campos;
             formulario({
               data: c.data || hojeISO(), cliente_id: c.cliente_id, destino: c.destino, toneladas: c.toneladas,
-              valor_tonelada: c.valor_tonelada, valor_fechado: null, observacoes: c.observacoes,
+              valor_tonelada: c.valor_tonelada, valor_fechado: null, observacoes: c.observacoes, motorista: c.motorista,
             }, { resultado, foto });
           },
         });

@@ -408,11 +408,13 @@ async function ligarFrete(empresaId, lido) {
   const origem = {};
   const obs = [lido.ticket && `Ticket ${lido.ticket}`, lido.placa && `placa ${lido.placa}`, lido.motorista && `motorista ${lido.motorista}`]
     .filter(Boolean).join(' · ') || null;
+  const motoristas = (await query('SELECT nome FROM motoristas WHERE empresa_id = $1 AND ativo', [empresaId])).rows;
+  const motorista = lido.motorista ? (motoristas.find((m) => norm(m.nome) === norm(lido.motorista))?.nome || lido.motorista) : null;
   const campos = {
     data: lido.data, toneladas: lido.peso_liquido, cliente_id: null, destino: null,
-    cobranca: 'tonelada', valor_tonelada: null, observacoes: obs,
+    cobranca: 'tonelada', valor_tonelada: null, observacoes: obs, motorista,
   };
-  for (const c of ['data', 'toneladas', 'observacoes']) if (campos[c] !== null) origem[c] = 'ticket';
+  for (const c of ['data', 'toneladas', 'observacoes', 'motorista']) if (campos[c] !== null) origem[c] = 'ticket';
 
   const cliente = acharPorNome(lido.emissor, clientes) || acharPorNome(lido.entidade, clientes);
   if (cliente) { campos.cliente_id = cliente.id; origem.cliente_id = 'ticket'; }

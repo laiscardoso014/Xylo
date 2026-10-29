@@ -16,6 +16,7 @@ const express = require('express');
 const { body, param, query: q, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { autenticar, podeEditar, somenteAdmin } = require('../middlewares/auth');
+const { idDoMotorista } = require('../utils/motoristas');
 const { lerNumero, numeroValido } = require('../utils/numeros');
 
 const router = express.Router();
@@ -43,9 +44,11 @@ const SELECT_FRETES = `
          fr.cliente_id, c.nome AS cliente, fr.destino,
          fr.toneladas, fr.valor_tonelada, fr.valor_fechado, fr.valor_total,
          fr.forma_pagamento, fr.status_pagamento,
-         to_char(fr.data_pagamento, 'YYYY-MM-DD') AS data_pagamento, fr.observacoes
+         to_char(fr.data_pagamento, 'YYYY-MM-DD') AS data_pagamento, fr.observacoes,
+         fr.motorista_id, m.nome AS motorista
     FROM fretes fr
-    JOIN clientes c ON c.id = fr.cliente_id`;
+    JOIN clientes c ON c.id = fr.cliente_id
+    LEFT JOIN motoristas m ON m.id = fr.motorista_id`;
 
 const regrasFrete = [
   body('data').isISO8601().withMessage('Informe a data do frete.'),
@@ -61,6 +64,7 @@ const regrasFrete = [
   body('data_pagamento').optional({ values: 'falsy' }).isISO8601().withMessage('Data de pagamento inválida.'),
   body('destino').optional({ values: 'falsy' }).isLength({ max: 100 }).withMessage('Destino muito longo.'),
   body('numero_carga').optional({ values: 'falsy' }).isLength({ max: 20 }).withMessage('Nº da carga muito longo.'),
+  body('motorista').optional({ values: 'falsy' }).isString().isLength({ max: 150 }).withMessage('Nome do motorista muito longo.'),
 ];
 
 // Monta os valores comuns de lançar e corrigir
@@ -135,17 +139,18 @@ router.post('/', podeEditar, regrasFrete, validar, async (req, res, next) => {
     const { rows } = await query(
       `INSERT INTO fretes (empresa_id, numero_carga, data, cliente_id, destino, toneladas,
                            valor_tonelada, valor_fechado, forma_pagamento, status_pagamento, data_pagamento, observacoes,
-                           criado_por)
+                           criado_por, motorista_id)
        VALUES ($1,
                COALESCE($2, (SELECT (COALESCE(MAX(numero_carga::int), 0) + 1)::text FROM fretes
                               WHERE empresa_id = $1 AND numero_carga ~ '^[0-9]+$'
                                 AND date_trunc('month', data) = date_trunc('month', $3::date))),
-               $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+               $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING id`,
       [
         req.usuario.empresaId, textoOuNulo(b.numero_carga), b.data, b.cliente_id, textoOuNulo(b.destino),
         lerNumero(b.toneladas), v.valorTonelada, v.valorFechado, b.forma_pagamento || null,
         v.status, v.dataPagamento, textoOuNulo(b.observacoes), req.usuario.id,
+        await idDoMotorista(query, req.usuario.empresaId, b.motorista),
       ]
     );
     const novo = await query(`${SELECT_FRETES} WHERE fr.id = $1`, [rows[0].id]);
@@ -172,12 +177,13 @@ router.put('/:id', podeEditar, [param('id').isInt({ min: 1 }), ...regrasFrete], 
       `UPDATE fretes SET
           numero_carga = COALESCE($3, numero_carga), data = $4, cliente_id = $5, destino = $6, toneladas = $7,
           valor_tonelada = $8, valor_fechado = $9, forma_pagamento = $10,
-          status_pagamento = $11, data_pagamento = $12, observacoes = $13
+          status_pagamento = $11, data_pagamento = $12, observacoes = $13, motorista_id = $14
         WHERE id = $1 AND empresa_id = $2`,
       [
         req.params.id, req.usuario.empresaId, textoOuNulo(b.numero_carga), b.data, b.cliente_id, textoOuNulo(b.destino),
         lerNumero(b.toneladas), v.valorTonelada, v.valorFechado, b.forma_pagamento || null,
         v.status, v.dataPagamento, textoOuNulo(b.observacoes),
+        await idDoMotorista(query, req.usuario.empresaId, b.motorista),
       ]
     );
     const { rows } = await query(`${SELECT_FRETES} WHERE fr.id = $1`, [req.params.id]);

@@ -368,7 +368,7 @@ function abrirModal(titulo, html) {
 function fecharModal() {
   if (Modal.obrigatorio) return;
   $('#modal').hidden = true;
-  $('#modal').classList.remove('modal-largo', 'modal-ticket');
+  $('#modal').classList.remove('modal-largo', 'modal-ticket', 'modal-amplo');
   $('#modal-corpo').innerHTML = '';
   $('#modal-fechar').hidden = false;
 }
