@@ -8,7 +8,6 @@
 --  Para o banco que JÁ ESTÁ rodando. Não apaga nada e pode rodar mais de
 --  uma vez. Dentro da pasta backend:
 --
---    & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d db_woodcontrol -f database/migracao_perfil.sql
 -- =====================================================================
 BEGIN;
 SET LOCAL client_min_messages = warning;
