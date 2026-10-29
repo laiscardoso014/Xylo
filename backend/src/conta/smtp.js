@@ -2,7 +2,9 @@
 // ENVIO DE E-MAIL por SMTP (sem biblioteca externa)
 //
 // Funciona com Gmail (senha de app), Outlook/Hotmail, Brevo e qualquer
-// servidor SMTP. Configuração no .env:
+// servidor SMTP. Ou, onde o SMTP é bloqueado (hospedagem grátis), pela API
+// HTTPS da Brevo: EMAIL_BREVO_CHAVE + EMAIL_REMETENTE.
+// Configuração SMTP no .env:
 //
 //   EMAIL_SMTP_HOST=smtp.gmail.com
 //   EMAIL_SMTP_PORTA=465            (465 = SSL direto; 587 = STARTTLS)
@@ -22,6 +24,17 @@ const crypto = require('crypto');
 
 function configuracao() {
   const e = process.env;
+  // Brevo pela API HTTPS (porta 443): funciona onde o SMTP é bloqueado (ex.: plano grátis do Render)
+  if (e.EMAIL_BREVO_CHAVE) {
+    const remetente = e.EMAIL_REMETENTE || '';
+    const endereco = (remetente.match(/<([^>]+)>/) || [null, remetente])[1].trim();
+    if (!endereco) {
+      console.error('[e-mail] EMAIL_BREVO_CHAVE preenchida, mas falta EMAIL_REMETENTE (ex.: Xylo <seuemail@gmail.com>).');
+      return null;
+    }
+    const nome = (remetente.match(/^\s*(.*?)\s*</) || [null, 'Xylo'])[1] || 'Xylo';
+    return { tipo: 'brevo', chave: e.EMAIL_BREVO_CHAVE.trim(), remetente, endereco, nome: nome.replace(/"/g, ''), host: 'api.brevo.com', porta: 443 };
+  }
   if (!e.EMAIL_SMTP_HOST || !e.EMAIL_USUARIO || !e.EMAIL_SENHA) return null;
   const porta = Number(e.EMAIL_SMTP_PORTA) || 465;
   const seguranca = (e.EMAIL_SMTP_SEGURANCA || (porta === 465 ? 'ssl' : 'starttls')).toLowerCase();
@@ -158,9 +171,38 @@ function explicarFalha(err, cfg) {
   return err;
 }
 
+// Envio pela API da Brevo (HTTPS). Documentação: POST https://api.brevo.com/v3/smtp/email
+async function enviarPelaBrevo(cfg, { para, assunto, texto, html }) {
+  let r;
+  try {
+    r = await fetch(process.env.EMAIL_BREVO_URL || 'https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': cfg.chave, 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({
+        sender: { name: cfg.nome, email: cfg.endereco },
+        to: [{ email: para }],
+        subject: assunto,
+        htmlContent: html,
+        textContent: texto,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (err) {
+    throw new Error(`Não consegui falar com a Brevo (${err.name === 'TimeoutError' ? 'demorou demais' : err.message}).`);
+  }
+  if (r.ok) return { enviado: true };
+  const corpo = await r.json().catch(() => ({}));
+  if (r.status === 401) throw new Error('A Brevo recusou a chave (EMAIL_BREVO_CHAVE). Confira a chave de API no painel da Brevo.');
+  if (/sender/i.test(corpo.message || '')) {
+    throw new Error(`A Brevo não aceitou o remetente ${cfg.endereco}: confirme este e-mail em "Senders" no painel da Brevo.`);
+  }
+  throw new Error(`A Brevo respondeu ${r.status}: ${corpo.message || 'erro desconhecido'}`);
+}
+
 async function enviarEmail(mensagem) {
   const cfg = configuracao();
   if (!cfg) return { enviado: false, motivo: 'nao_configurado' };
+  if (cfg.tipo === 'brevo') return enviarPelaBrevo(cfg, mensagem);
   try {
     return await conversar(cfg, mensagem);
   } catch (err) {

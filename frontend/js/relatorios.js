@@ -213,7 +213,7 @@ async function telaRelatorios() {
           <small>${pct(d.resultado, d.faturamento)} do faturamento</small></div>
       </div>
       <p class="nota"><i class="fas fa-circle-info"></i>
-        Pela tabela de preços, as viagens do mês geram <strong>${formatarMoeda(d.custos_previstos.florestas)}</strong> a pagar às florestas
+        Pelos valores das viagens, o mês tem <strong>${formatarMoeda(d.custos_previstos.florestas)}</strong> a pagar às florestas
         e <strong>${formatarMoeda(d.custos_previstos.empreiteiros)}</strong> aos empreiteiros. Esses valores entram no resultado
         quando forem pagos e lançados em <a href="#despesas">Despesas</a> — veja o saldo de cada um nas abas Por floresta e Por empreiteiro.</p>`;
 
@@ -239,8 +239,8 @@ async function telaRelatorios() {
         ...d.despesas.por_categoria.map((c) => ['Despesas', c.categoria, '', c.valor]),
         ['Despesas', 'TOTAL', '', d.despesas.valor],
         ['Resultado', 'Faturamento - Despesas', '', d.resultado],
-        ['Previsão', 'A pagar às florestas (tabela de preços)', '', d.custos_previstos.florestas],
-        ['Previsão', 'A pagar aos empreiteiros (tabela de preços)', '', d.custos_previstos.empreiteiros],
+        ['Previsão', 'A pagar às florestas (valores das viagens)', '', d.custos_previstos.florestas],
+        ['Previsão', 'A pagar aos empreiteiros (valores das viagens)', '', d.custos_previstos.empreiteiros],
       ],
     };
   }
@@ -279,7 +279,7 @@ async function telaRelatorios() {
       { titulo: 'Saldo', campo: 'saldo', num: true, formato: formatarMoeda, total: formatarMoeda(somar(linhas, 'saldo')) },
     ];
     box.innerHTML = `${tabela(colunas, linhas, true)}
-      <p class="nota"><i class="fas fa-circle-info"></i> <strong>A pagar</strong> vem da tabela de preços de compra;
+      <p class="nota"><i class="fas fa-circle-info"></i> <strong>A pagar</strong> vem do valor de compra informado em cada viagem;
         <strong>Pago no mês</strong> são as despesas ligadas à floresta. Saldo negativo = pagou mais do que a produção do mês (adiantamento).</p>`;
     graficoComMedidas(box, 'Florestas do mês', [
       { id: 'ton', rotulo: 'Toneladas', campo: 'toneladas', formato: emToneladas, dica: (l) => [{ valor: String(l.qtd_viagens), rotulo: 'viagens' }, { valor: formatarMoeda(l.valor_vendido), rotulo: 'vendido' }] },

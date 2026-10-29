@@ -12,7 +12,12 @@
 // =====================================================================
 
 // Endereço da API (backend). Na publicação, troque só esta linha.
-const API_URL = 'http://localhost:3000/api';
+// Endereço da API:
+//  - aberto pelo próprio servidor (na web ou em http://localhost:3000): o mesmo site + /api
+//  - aberto pelo Live Server (porta 5500) ou direto do arquivo: o servidor local na porta 3000
+const API_URL = (location.protocol === 'file:' || location.port === '5500' || location.port === '5501')
+  ? 'http://localhost:3000/api'
+  : `${location.origin}/api`;
 
 // Atalho para buscar um elemento: $('#id') ou $('.classe')
 const $ = (seletor, dentro = document) => dentro.querySelector(seletor);

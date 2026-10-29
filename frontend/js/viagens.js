@@ -4,9 +4,10 @@
 // Lançamento das cargas: cliente, nº, data, ticket, placa, floresta,
 // empreiteiro, classe, peso líquido, valor da tonelada e valor total.
 //
-// O valor da tonelada vem da Tabela de Preços (dá para digitar outro, se
-// precisar). O formulário mostra a prévia do preço e do total antes de
-// salvar. Os valores de floresta e empreiteiro também vêm da tabela.
+// PREÇOS: não são fixos. Cada viagem tem os seus valores por tonelada:
+// venda ao cliente, compra da floresta e empreiteiro (se houver). O
+// formulário sugere os valores da última viagem parecida (marcados como
+// "sugestão") e mostra a venda, os custos e a sobra da carga antes de salvar.
 //
 // LER TICKET: foto (ou texto colado) do ticket de pesagem -> o servidor
 // extrai só os campos da planilha (ticket, data, horário, placa, motorista,
@@ -91,7 +92,7 @@ async function telaViagens() {
       <table class="tabela tabela-viagens">
         <thead><tr>
           <th>Viagem</th><th>Cliente</th><th>Floresta / empreiteiro</th><th>Classe</th>
-          <th>Ticket / placa</th><th class="num">Peso (t)</th><th class="num">R$ / t</th><th class="num">Total</th><th></th>
+          <th>Ticket / placa</th><th class="num">Peso (t)</th><th class="num">R$ / t<div class="sub">venda · compra</div></th><th class="num">Total</th><th></th>
         </tr></thead>
         <tbody>
           ${lista.map((v) => `
@@ -102,7 +103,7 @@ async function telaViagens() {
               <td>${esc(v.classe)}</td>
               <td>${esc(v.ticket) || '–'}${v.placa || v.motorista ? `<div class="sub">${[v.placa, v.motorista].filter(Boolean).map(esc).join(' · ')}</div>` : ''}</td>
               <td class="num">${formatarPeso(v.peso_liquido)}</td>
-              <td class="num">${formatarMoeda(v.valor_tonelada)}</td>
+              <td class="num">${formatarMoeda(v.valor_tonelada)}<div class="sub" title="Compra da floresta">${v.valor_ton_floresta !== null && v.valor_ton_floresta !== undefined ? `compra ${formatarMoeda(v.valor_ton_floresta)}` : '<span class="alerta">sem compra</span>'}</div></td>
               <td class="num"><strong>${formatarMoeda(v.valor_total)}</strong>
                 ${v.status === 'Cancelada' ? '<div class="sub">Cancelada</div>' : ''}</td>
               <td class="acoes">
@@ -127,8 +128,19 @@ async function telaViagens() {
   // Garante que um cadastro desativado continue aparecendo ao corrigir uma viagem antiga
   const comAtual = (lista, id, nome) => (id && !lista.some((i) => i.id === id) ? [...lista, { id, nome: `${nome} (inativo)` }] : lista);
 
+  // Preços por tonelada da viagem (não são fixos: cada carga tem os seus)
+  //   depende = de quem é o preço; a sugestão é o valor da última viagem com ele
+  const PRECOS = [
+    { nome: 'valor_tonelada', chave: 'venda', depende: 'cliente_id', rotulo: 'Venda ao cliente (R$/t)', quem: 'deste cliente',
+      ajuda: 'Quanto o cliente paga por tonelada nesta carga' },
+    { nome: 'valor_ton_floresta', chave: 'floresta', depende: 'floresta_id', rotulo: 'Compra da floresta (R$/t)', quem: 'desta floresta',
+      ajuda: 'Quanto foi pago à floresta por tonelada (0 se a floresta é própria)' },
+    { nome: 'valor_ton_empreiteiro', chave: 'empreiteiro', depende: 'empreiteiro_id', rotulo: 'Empreiteiro (R$/t)', quem: 'deste empreiteiro',
+      ajuda: 'Quanto o empreiteiro recebe por tonelada nesta carga' },
+  ];
+  const valorCampo = (x) => (x !== null && x !== undefined && x !== '' ? Number(x).toFixed(2).replace('.', ',') : '');
+
   function formulario(v = {}, leitura = null) {
-    const valorDigitado = v.id ? Number(v.valor_tonelada).toFixed(2).replace('.', ',') : '';
     const pesoDigitado = v.peso_liquido !== undefined && v.peso_liquido !== null ? String(v.peso_liquido).replace('.', ',') : '';
     abrirModal(v.id ? `Corrigir viagem nº ${v.numero_viagem}` : leitura ? 'Nova viagem pelo ticket' : 'Nova viagem', `
       <form novalidate>
@@ -147,69 +159,141 @@ async function telaViagens() {
           <div class="campo"><label>Horário da pesagem</label><input name="hora_pesagem" type="time" value="${esc(v.hora_pesagem)}"></div>
           <div class="campo"><label>Peso líquido (t) *</label><input name="peso_liquido" required inputmode="decimal" placeholder="Ex.: 46,79"
               value="${esc(pesoDigitado)}"></div>
-          <div class="campo"><label>Valor da tonelada (R$)</label><input name="valor_tonelada" inputmode="decimal" value="${valorDigitado}" placeholder="Da tabela de preços">
-            <small>Em branco: usa a tabela de preços</small></div>
-          <div class="campo larga"><label>Observações</label><textarea name="observacoes" rows="2">${esc(v.observacoes)}</textarea></div>
         </div>
-        <div class="previa" id="previa-viagem" aria-live="polite">Escolha cliente, floresta, classe e data para ver o preço.</div>
+        <fieldset class="precos-viagem">
+          <legend>Preços desta carga <small>(mudam de carga para carga)</small></legend>
+          <div class="grade-campos">
+            ${PRECOS.map((pr) => `
+              <div class="campo" data-preco="${pr.chave}" ${pr.chave === 'empreiteiro' && !v.empreiteiro_id ? 'hidden' : ''}>
+                <label for="preco-${pr.chave}">${pr.rotulo} *</label>
+                <input id="preco-${pr.chave}" name="${pr.nome}" inputmode="decimal" required placeholder="Ex.: ${pr.chave === 'venda' ? '280,00' : pr.chave === 'floresta' ? '95,00' : '45,00'}"
+                  value="${esc(valorCampo(v[pr.nome]))}">
+                <small class="ajuda-preco">${pr.ajuda}</small>
+              </div>`).join('')}
+          </div>
+        </fieldset>
+        <div class="grade-campos"><div class="campo larga"><label>Observações</label><textarea name="observacoes" rows="2">${esc(v.observacoes)}</textarea></div></div>
+        <div class="previa" id="previa-viagem" aria-live="polite">Informe o peso e os preços para ver os totais da carga.</div>
         ${RODAPE_FORMULARIO}
       </form>`);
 
     const form = $('#modal-corpo form');
     const campo = (n) => form.elements[n];
-    let precoTabela = null;
+    const caixa = (pr) => form.querySelector(`[data-preco="${pr.chave}"]`);
+    let sugestoes = {};
+    let consulta = 0;
 
     // Destaca o que veio do ticket (verde) ou da última viagem da placa (roxo)
     if (leitura) marcarLidos(form, leitura, ['cliente_id', 'floresta_id', 'classe_id', 'peso_liquido', 'data']);
-    let consulta = 0;
+
+    const numero = (n) => { const x = lerNumero(campo(n).value); return Number.isFinite(x) ? x : null; };
 
     function atualizarTotal() {
-      const peso = lerNumero(campo('peso_liquido').value);
-      const digitado = lerNumero(campo('valor_tonelada').value);
-      const valor = Number.isFinite(digitado) ? digitado : precoTabela && Number(precoTabela.venda);
+      const peso = numero('peso_liquido');
+      const venda = numero('valor_tonelada');
+      const floresta = numero('valor_ton_floresta');
+      const temEmp = Boolean(campo('empreiteiro_id').value);
+      const emp = temEmp ? numero('valor_ton_empreiteiro') : 0;
       const linhas = [];
-      if (precoTabela) {
-        linhas.push(precoTabela.venda !== null
-          ? `Tabela de preços: <strong>${formatarMoeda(precoTabela.venda)}/t</strong>`
-          : '<span class="alerta">Sem preço de venda cadastrado para este cliente e classe nessa data: informe o valor da tonelada.</span>');
-        if (precoTabela.compra !== null) linhas.push(`floresta ${formatarMoeda(precoTabela.compra)}/t`);
-        if (precoTabela.empreitada !== null) linhas.push(`empreiteiro ${formatarMoeda(precoTabela.empreitada)}/t`);
+      if (peso !== null && peso > 0) {
+        if (venda !== null) linhas.push(`Venda da carga: <strong>${formatarMoeda(peso * venda)}</strong>`);
+        if (floresta !== null) linhas.push(`floresta ${formatarMoeda(peso * floresta)}`);
+        if (temEmp && emp !== null) linhas.push(`empreiteiro ${formatarMoeda(peso * emp)}`);
+        if (venda !== null && floresta !== null && emp !== null) {
+          const sobra = peso * (venda - floresta - emp);
+          linhas.push(`<span class="${sobra < 0 ? 'alerta' : ''}">sobra <strong>${formatarMoeda(sobra)}</strong> (${formatarMoeda(venda - floresta - emp)}/t)</span>`);
+        }
       }
-      if (Number.isFinite(peso) && Number.isFinite(valor) && valor !== null) {
-        linhas.push(`Total da carga: <strong>${formatarMoeda(peso * valor)}</strong>`);
-      }
-      $('#previa-viagem').innerHTML = linhas.length ? linhas.join(' · ') : 'Escolha cliente, floresta, classe e data para ver o preço.';
+      $('#previa-viagem').innerHTML = linhas.length ? linhas.join(' · ') : 'Informe o peso e os preços para ver os totais da carga.';
     }
 
-    async function buscarPreco() {
+    // ---- Sugestões: última viagem parecida -----------------------------
+    function marcarSugestao(pr, u) {
+      const c = caixa(pr);
+      c.classList.add('campo-sugerido');
+      campo(pr.nome).dataset.sugerido = '1';
+      if (!c.querySelector('.etiqueta-origem')) {
+        c.querySelector('label').insertAdjacentHTML('beforeend',
+          `<span class="etiqueta-origem" title="Última viagem ${pr.quem}: nº ${esc(u.numero_viagem)}, ${formatarDataISO(u.data)}">sugestão</span>`);
+      }
+    }
+    function tirarSugestao(pr) {
+      const c = caixa(pr);
+      c.classList.remove('campo-sugerido');
+      c.querySelector('.etiqueta-origem')?.remove();
+      delete campo(pr.nome).dataset.sugerido;
+    }
+    // Texto embaixo do campo: a última vez (com botão para usar)
+    function ajuda(pr) {
+      const u = sugestoes[pr.chave];
+      const el = caixa(pr).querySelector('.ajuda-preco');
+      if (!u) { el.textContent = pr.ajuda; return; }
+      el.innerHTML = `Última ${pr.quem}${u.mesma_classe ? '' : ` (${esc(u.classe)})`}: `
+        + `<button type="button" class="link-botao pequeno" data-usar-preco="${pr.chave}">${formatarMoeda(u.valor)}/t</button> em ${formatarDataISO(u.data)}`;
+    }
+    // Viagem nova (ou campo vazio): já preenche com a última da mesma classe, marcado como sugestão
+    function aplicarSugestoes() {
+      for (const pr of PRECOS) {
+        const el = campo(pr.nome);
+        const u = sugestoes[pr.chave];
+        if (u && u.mesma_classe && (!el.value.trim() || el.dataset.sugerido)) {
+          el.value = valorCampo(u.valor);
+          marcarSugestao(pr, u);
+        } else if (el.dataset.sugerido && !u) {
+          el.value = '';
+          tirarSugestao(pr);
+        }
+        ajuda(pr);
+      }
+      atualizarTotal();
+    }
+    async function buscarSugestoes() {
       const p = new URLSearchParams({
         cliente_id: campo('cliente_id').value, floresta_id: campo('floresta_id').value,
-        empreiteiro_id: campo('empreiteiro_id').value, classe_id: campo('classe_id').value, data: campo('data').value,
+        empreiteiro_id: campo('empreiteiro_id').value, classe_id: campo('classe_id').value,
       });
-      if (!p.get('classe_id') || !p.get('data') || !p.get('cliente_id')) { precoTabela = null; atualizarTotal(); return; }
+      if (v.id) p.set('ignorar_id', v.id);
       const minha = ++consulta;
       try {
-        const r = await api(`/viagens/preco?${p}`);
-        if (minha === consulta) { precoTabela = r; atualizarTotal(); }
+        const r = await api(`/viagens/sugestoes?${p}`);
+        if (minha !== consulta) return;
+        sugestoes = r;
       } catch {
-        precoTabela = null; atualizarTotal();
+        sugestoes = {};
       }
+      aplicarSugestoes();
     }
 
-    ['cliente_id', 'floresta_id', 'empreiteiro_id', 'classe_id', 'data'].forEach((n) => campo(n).addEventListener('change', buscarPreco));
+    form.querySelector('.precos-viagem').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-usar-preco]');
+      if (!b) return;
+      const pr = PRECOS.find((x) => x.chave === b.dataset.usarPreco);
+      campo(pr.nome).value = valorCampo(sugestoes[pr.chave].valor);
+      tirarSugestao(pr);
+      atualizarTotal();
+      campo(pr.nome).focus();
+    });
+    PRECOS.forEach((pr) => campo(pr.nome).addEventListener('input', () => { tirarSugestao(pr); atualizarTotal(); }));
 
-    // Corrigindo uma viagem: se mudar cliente, classe ou data, o preço antigo não vale mais,
-    // então o campo é limpo e a tabela de preços volta a definir o valor.
-    if (v.id) {
-      ['cliente_id', 'classe_id', 'data'].forEach((n) => campo(n).addEventListener('change', () => {
-        campo('valor_tonelada').value = '';
-        atualizarTotal();
-      }));
-    }
-    ['peso_liquido', 'valor_tonelada'].forEach((n) => campo(n).addEventListener('input', atualizarTotal));
-    buscarPreco();
+    // Trocou cliente/floresta/empreiteiro: o preço era de outro, então limpa e sugere de novo.
+    // Trocou a classe: só os valores sugeridos são trocados (o digitado fica).
+    PRECOS.forEach((pr) => campo(pr.depende).addEventListener('change', () => {
+      campo(pr.nome).value = '';
+      tirarSugestao(pr);
+      buscarSugestoes();
+    }));
+    campo('classe_id').addEventListener('change', buscarSugestoes);
+    campo('empreiteiro_id').addEventListener('change', () => {
+      const emp = PRECOS[2];
+      caixa(emp).hidden = !campo('empreiteiro_id').value;
+      if (caixa(emp).hidden) campo(emp.nome).value = '';
+      atualizarTotal();
+    });
+    campo('peso_liquido').addEventListener('input', atualizarTotal);
+    buscarSugestoes();
 
     ligarFormulario(async (dados) => {
+      if (!dados.empreiteiro_id) delete dados.valor_ton_empreiteiro;
       if (v.id) {
         await api(`/viagens/${v.id}`, { metodo: 'PUT', corpo: dados });
         toast('Viagem corrigida.');

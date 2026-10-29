@@ -1218,3 +1218,12 @@ small.aviso-campo .aviso-usar:hover { background: rgba(146, 64, 14, 0.08); }
 .menu-itens a .badge:empty { display: none; }
 .menu-itens a .badge.badge-alerta { background: #dc2626; }
 .modal-medio .modal { width: min(780px, 100%); }
+.sub .alerta, td .alerta { color: var(--wood-700); font-weight: 600; }
+
+/* Preços da viagem (venda, floresta, empreiteiro) */
+.precos-viagem { border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 12px 16px 4px; margin: 14px 0 6px; }
+.precos-viagem legend { padding: 0 6px; font-weight: 700; font-size: 14px; color: var(--gray-900); }
+.precos-viagem legend small { font-weight: 500; color: var(--texto-suave); }
+.precos-viagem .grade-campos { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.precos-viagem .campo[hidden] { display: none; }
+@media screen { [data-tema="escuro"] .precos-viagem { border-color: var(--gray-700); } }

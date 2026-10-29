@@ -6,7 +6,7 @@
 //
 // Cada achado: { regra, gravidade: 'erro'|'atencao'|'info', titulo, detalhe, itens: [...] }
 //   erro    = quase certamente está errado (ex.: viagem com data no futuro)
-//   atencao = pode estar certo, mas vale conferir (ex.: preço diferente da tabela)
+//   atencao = pode estar certo, mas vale conferir (ex.: preço bem fora do comum)
 //   info    = lembrete (ex.: fretes pendentes)
 // =====================================================================
 const { query } = require('../config/db');
@@ -29,17 +29,19 @@ async function conferirMes(empresaId, mes) {
         WHERE ${viagensAtivas} AND (v.ticket IS NULL OR v.ticket = '')
         ORDER BY v.data, v.id`, p),
 
-    // Valor da tonelada diferente do que a tabela de preços manda naquele dia
+    // Preço de venda bem diferente (mais de 20%) da média do mês para o mesmo cliente e classe:
+    // os preços mudam, mas uma diferença grande costuma ser erro de digitação
     precoDiferente: query(
       `SELECT * FROM (
          SELECT v.id, v.numero_viagem, to_char(v.data, 'DD/MM/YYYY') AS data, c.nome AS cliente, cm.nome AS classe,
                 v.valor_tonelada AS cobrado,
-                fn_buscar_preco(v.empresa_id, 'VENDA', v.classe_id, v.data, v.cliente_id, v.floresta_id, v.empreiteiro_id) AS tabela
+                ROUND(AVG(v.valor_tonelada) OVER (PARTITION BY v.cliente_id, v.classe_id), 2) AS media,
+                COUNT(*) OVER (PARTITION BY v.cliente_id, v.classe_id) AS n
            FROM viagens v
            JOIN clientes c ON c.id = v.cliente_id
            JOIN classes_madeira cm ON cm.id = v.classe_id
           WHERE ${viagensAtivas}) x
-        WHERE tabela IS NOT NULL AND cobrado <> tabela
+        WHERE n >= 3 AND media > 0 AND ABS(cobrado - media) / media > 0.20
         ORDER BY data, id`, p),
 
     // Peso muito baixo ou muito alto para uma carga de caminhão
@@ -72,12 +74,19 @@ async function conferirMes(empresaId, mes) {
       `SELECT v.id, v.numero_viagem, to_char(v.data, 'DD/MM/YYYY') AS data, v.ticket
          FROM viagens v WHERE ${viagensAtivas} AND v.data > CURRENT_DATE`, p),
 
-    // Sem preço de compra: o custo da floresta não foi calculado
+    // Sem valor de compra da floresta (ex.: viagens importadas do Excel)
     semCustoFloresta: query(
       `SELECT f.nome AS floresta, cm.nome AS classe, COUNT(*)::int AS viagens, SUM(v.peso_liquido) AS toneladas
          FROM viagens v JOIN florestas f ON f.id = v.floresta_id JOIN classes_madeira cm ON cm.id = v.classe_id
         WHERE ${viagensAtivas} AND v.valor_ton_floresta IS NULL
         GROUP BY f.nome, cm.nome ORDER BY f.nome`, p),
+
+    // Tem empreiteiro, mas sem o valor pago a ele
+    semValorEmpreiteiro: query(
+      `SELECT e.nome AS empreiteiro, COUNT(*)::int AS viagens, SUM(v.peso_liquido) AS toneladas
+         FROM viagens v JOIN empreiteiros e ON e.id = v.empreiteiro_id
+        WHERE ${viagensAtivas} AND v.valor_ton_empreiteiro IS NULL
+        GROUP BY e.nome ORDER BY e.nome`, p),
 
     // Sem empreiteiro (e sem divisão de carga): ninguém recebe por essa produção
     semEmpreiteiro: query(
@@ -127,9 +136,9 @@ async function conferirMes(empresaId, mes) {
   add('duplicada', 'erro', r.duplicada, (n) => `${n} possível(is) viagem(ns) lançada(s) em dobro`,
     'Mesma placa, mesmo dia e mesmo peso. Confira se não é a mesma carga lançada duas vezes.',
     (v) => `${v.placa || 'sem placa'} em ${v.data}: ${v.vezes}× ${ton(v.peso_liquido)} (viagens nº ${v.numeros})`);
-  add('preco_diferente', 'atencao', r.precoDiferente, (n) => `${n} viagem(ns) com preço diferente da tabela`,
-    'O valor da tonelada foi digitado à mão e não bate com a tabela de preços vigente no dia.',
-    (v) => `Viagem nº ${v.numero_viagem} (${v.data}, ${v.cliente}, ${v.classe}): cobrado ${brl(v.cobrado)}/t, tabela ${brl(v.tabela)}/t`);
+  add('preco_diferente', 'atencao', r.precoDiferente, (n) => `${n} viagem(ns) com preço bem fora do comum`,
+    'O valor da tonelada está mais de 20% acima ou abaixo da média do mês para o mesmo cliente e classe. Pode ser erro de digitação.',
+    (v) => `Viagem nº ${v.numero_viagem} (${v.data}, ${v.cliente}, ${v.classe}): ${brl(v.cobrado)}/t, média do mês ${brl(v.media)}/t`);
   add('sem_ticket', 'atencao', r.semTicket, (n) => `${n} viagem(ns) sem ticket`,
     'Sem o ticket fica difícil conferir com o romaneio da serraria.',
     (v) => `Viagem nº ${v.numero_viagem} em ${v.data} (${v.cliente}${v.placa ? `, placa ${v.placa}` : ''}, ${ton(v.peso_liquido)})`);
@@ -138,9 +147,12 @@ async function conferirMes(empresaId, mes) {
     (v) => `Viagem nº ${v.numero_viagem} em ${v.data}: ${ton(v.peso_liquido)}${v.ticket ? ` (ticket ${v.ticket})` : ''}`);
   add('placa_repetida', 'atencao', r.placaRepetida, (n) => `${n} caso(s) de placa com 3+ viagens no mesmo dia`,
     'É possível, mas incomum. Confira os tickets.', (v) => `${v.placa} em ${v.data}: ${v.viagens} viagens (tickets ${v.tickets})`);
-  add('sem_custo_floresta', 'atencao', r.semCustoFloresta, (n) => `${n} floresta/classe sem preço de compra`,
-    'Essas viagens não calcularam o valor a pagar à floresta. Cadastre o preço de COMPRA na Tabela de preços e corrija as viagens.',
+  add('sem_custo_floresta', 'atencao', r.semCustoFloresta, (n) => `${n} floresta/classe sem valor de compra`,
+    'Essas viagens estão sem o valor pago à floresta (o custo fica zero). Abra as viagens e informe a compra da floresta.',
     (v) => `${v.floresta} · ${v.classe}: ${v.viagens} viagem(ns), ${ton(v.toneladas)}`);
+  add('sem_valor_empreiteiro', 'atencao', r.semValorEmpreiteiro, (n) => `${n} empreiteiro(s) com viagens sem valor`,
+    'Essas viagens têm empreiteiro, mas sem o valor pago a ele por tonelada. Informe o valor nas viagens.',
+    (v) => `${v.empreiteiro}: ${v.viagens} viagem(ns), ${ton(v.toneladas)}`);
   add('sem_empreiteiro', 'info', r.semEmpreiteiro, (n) => `${n} viagem(ns) sem empreiteiro`,
     'Ninguém recebe por essa produção no relatório de empreiteiros.',
     (v) => `Viagem nº ${v.numero_viagem} em ${v.data}${v.ticket ? ` (ticket ${v.ticket})` : ''}`);

@@ -1,8 +1,8 @@
 // =====================================================================
 // EMPREITEIROS - quem corta e carrega a madeira (Xande, Cabeçote, Lico, Luiz...)
 //
-// O valor pago ao empreiteiro por tonelada fica na Tabela de Preços
-// (tipo EMPREITADA). Adiantamentos, diesel e posto entram em Despesas,
+// O valor pago ao empreiteiro por tonelada é informado em cada viagem
+// (os preços mudam). Adiantamentos, diesel e posto entram em Despesas,
 // ligados ao empreiteiro, para o relatório mostrar o líquido a pagar.
 //
 // Permissões (mesmas de clientes e florestas):

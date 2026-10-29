@@ -12,7 +12,7 @@ const TABELAS = {
   viagens: { nome: 'Viagem', plural: 'Viagens', rota: 'viagens' },
   fretes: { nome: 'Frete', plural: 'Fretes', rota: 'fretes' },
   despesas: { nome: 'Despesa', plural: 'Despesas', rota: 'despesas' },
-  tabelas_precos: { nome: 'Preço', plural: 'Tabela de preços', rota: 'precos' },
+  tabelas_precos: { nome: 'Preço (tabela antiga)', plural: 'Tabela de preços (antiga)', rota: null },
   clientes: { nome: 'Cliente', plural: 'Clientes', rota: 'clientes' },
   florestas: { nome: 'Floresta', plural: 'Florestas', rota: 'florestas' },
   empreiteiros: { nome: 'Empreiteiro', plural: 'Empreiteiros', rota: 'empreiteiros' },

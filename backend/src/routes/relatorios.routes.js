@@ -44,7 +44,7 @@ const rota = (fn) => async (req, res, next) => {
 // ---------------------------------------------------------------------
 // FECHAMENTO DO MÊS (como a aba FECHAMENTO da planilha)
 // Faturamento (madeira + fretes) - despesas lançadas = resultado.
-// Os custos calculados pela tabela de preços (florestas e empreiteiros)
+// Os custos das viagens (valores pagos à floresta e ao empreiteiro, informados em cada viagem)
 // aparecem à parte, como previsão: entram no resultado quando são pagos
 // e lançados em Despesas.
 // ---------------------------------------------------------------------

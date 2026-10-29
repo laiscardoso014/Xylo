@@ -39,7 +39,7 @@ const AJUDA = `Posso ajudar com os dados do Xylo. Experimente perguntar:
 - **Quanto devo aos empreiteiros?**
 - **Florestas do mês** · **Clientes do mês** · **Toneladas por classe**
 - **Ticket 96403** ou **placa QJL9F85**
-- **Tabela de preços de compra**
+- **Preços de compra** (praticados nas viagens)
 - **O que falta receber e pagar?**
 - **Comparar os últimos 6 meses**`;
 
@@ -63,7 +63,7 @@ async function responderBasico(empresaId, texto, mesFoco) {
   }
   if (/preco|tabela/.test(t)) {
     const tipo = /compra|floresta/.test(t) ? 'COMPRA' : /empreit/.test(t) ? 'EMPREITADA' : /venda|client|serrari/.test(t) ? 'VENDA' : undefined;
-    return { texto: textoPrecos(await usar('tabela_de_precos', { tipo }), tipo) };
+    return { texto: textoPrecos(await usar('precos_praticados', { tipo }), tipo) };
   }
   if (/compar|evolu|ultimos|tendenc|mes a mes/.test(t)) {
     const qtd = Number((t.match(/(\d{1,2})\s*mes/) || [])[1]) || 6;
@@ -90,8 +90,8 @@ function textoResumo(r) {
     `- **Despesas: ${brl(r.despesas_total)}**${r.despesas_por_categoria.length ? ` (${r.despesas_por_categoria.slice(0, 3).map((d) => `${d.categoria} ${brl(d.valor)}`).join(', ')})` : ''}`,
     `- **Resultado: ${brl(r.resultado)}**${r.faturamento ? ` (${((r.resultado / r.faturamento) * 100).toFixed(1).replace('.', ',')}% do faturamento)` : ''}`,
   ];
-  if (r.a_pagar_pela_tabela_de_precos.florestas || r.a_pagar_pela_tabela_de_precos.empreiteiros) {
-    linhas.push('', `Pela tabela de preços, as viagens geram ${brl(r.a_pagar_pela_tabela_de_precos.florestas)} a pagar às florestas e ${brl(r.a_pagar_pela_tabela_de_precos.empreiteiros)} aos empreiteiros.`);
+  if (r.a_pagar_florestas_empreiteiros.florestas || r.a_pagar_florestas_empreiteiros.empreiteiros) {
+    linhas.push('', `Pelos valores das viagens, há ${brl(r.a_pagar_florestas_empreiteiros.florestas)} a pagar às florestas e ${brl(r.a_pagar_florestas_empreiteiros.empreiteiros)} aos empreiteiros.`);
   }
   return linhas.join('\n');
 }
@@ -129,12 +129,12 @@ function formatarViagens(r, busca) {
 }
 
 function textoPrecos(r, tipo) {
-  if (!r.precos.length) return 'Não há preços válidos hoje para essa busca.';
+  if (!r.precos.length) return 'Não encontrei viagens com esses preços nos últimos 90 dias.';
   const nomes = { VENDA: 'Venda (cliente paga)', COMPRA: 'Compra (pago à floresta)', EMPREITADA: 'Empreitada (pago ao empreiteiro)' };
   const grupos = {};
   r.precos.forEach((p) => { (grupos[p.tipo] = grupos[p.tipo] || []).push(p); });
-  return Object.entries(grupos).map(([tp, lista]) =>
-    [`**${nomes[tp]}**`, ...lista.map((p) => `- ${p.para || 'todos'} · ${p.classe}: ${brl(p.valor_tonelada)}/t`)].join('\n'))
+  return `Preços praticados nas viagens (${r.periodo}):\n\n` + Object.entries(grupos).map(([tp, lista]) =>
+    [`**${nomes[tp]}**`, ...lista.map((p) => `- ${p.para} · ${p.classe}: último ${brl(p.ultimo)}/t (média ${brl(p.media)}${p.menor !== p.maior ? `, de ${brl(p.menor)} a ${brl(p.maior)}` : ''}; ${p.viagens} viagem(ns))`)].join('\n'))
     .join('\n\n') + (tipo ? '' : '\n\nDica: peça "preços de compra" ou "preços de empreitada" para filtrar.');
 }
 

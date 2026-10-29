@@ -45,6 +45,9 @@ const TIPOS = {
       peso: ['peso liq', 'peso liquido', 'peso', 'peso t', 'toneladas', 'ton', 'peso ton', 'peso liq t'],
       valor_tonelada: ['vlr ton', 'valor ton', 'valor tonelada', 'valor da tonelada', 'preco ton', 'preco tonelada', 'r$/t', 'r$ t', 'preco', 'valor r$/t'],
       valor_total: ['vlr total', 'valor total', 'total r$'],
+      // preços pagos (opcionais; a planilha da empresa não tem: completa depois na viagem)
+      valor_floresta: ['vlr floresta', 'valor floresta', 'compra', 'vlr compra', 'valor compra', 'preco compra', 'compra floresta', 'compra ton'],
+      valor_empreiteiro: ['vlr empreiteiro', 'valor empreiteiro', 'empreitada', 'vlr empreitada', 'valor empreitada', 'vlr terceiro', 'valor terceiro'],
       motorista: ['motorista'],
       hora: ['horario pesagem', 'hora pesagem', 'horario', 'hora'],
       volume_m3: ['m3', 'volume', 'volume m3'],
@@ -367,6 +370,15 @@ async function analisarViagens(empresaId, brutas, opcoes) {
       avisos.push(`Total da planilha (${totalPlanilha.toFixed(2)}) diferente de peso × valor (${(peso * valorTon).toFixed(2)}).`);
     }
 
+    // Preços pagos (só se a planilha tiver as colunas)
+    const compra = paraNumero(v.valor_floresta);
+    const valorFloresta = Number.isFinite(compra) && compra >= 0 ? compra : null;
+    const emp = paraNumero(v.valor_empreiteiro);
+    const valorEmpreiteiro = empreiteiro && Number.isFinite(emp) && emp >= 0 ? emp : null;
+    if (!valorTon) erros.push('Sem valor da tonelada: informe o valor de venda na planilha (coluna Vlr TON ou Vlr Total).');
+    if (valorFloresta === null) avisos.push('Sem valor de compra da floresta: complete depois na viagem.');
+    if (empreiteiro && valorEmpreiteiro === null) avisos.push('Sem valor do empreiteiro: complete depois na viagem.');
+
     // Duplicadas: mesmo ticket, ou mesma data + placa + peso
     let status = erros.length ? 'erro' : 'importar';
     const chave = data && Number.isFinite(peso) ? `${data}|${placa || ''}|${peso.toFixed(2)}` : null;
@@ -390,21 +402,8 @@ async function analisarViagens(empresaId, brutas, opcoes) {
         cliente: cliente?.nome || (vazio(nomeCliente) ? null : String(nomeCliente)), floresta: floresta?.nome || paraTexto(v.floresta),
         empreiteiro: empreiteiro?.nome || null, classe: classe?.nome || paraTexto(v.classe), hora, motorista,
       },
-      _gravar: { data, ticket, placa, peso, valorTon, cliente, floresta, empreiteiro, classe, hora, motorista, volume: Number.isFinite(volume) && volume > 0 ? volume : null, obs },
+      _gravar: { data, ticket, placa, peso, valorTon, valorFloresta, valorEmpreiteiro, cliente, floresta, empreiteiro, classe, hora, motorista, volume: Number.isFinite(volume) && volume > 0 ? volume : null, obs },
     });
-  }
-
-  // Sem valor na planilha: precisa haver preço de VENDA na tabela (cadastros novos ainda não têm)
-  for (const l of linhas.filter((x) => x.status === 'importar' && !x._gravar.valorTon)) {
-    const g = l._gravar;
-    if (!g.cliente?.id || !g.floresta?.id) {
-      l.status = 'erro'; l.erros.push('Sem valor da tonelada: informe na planilha (cadastro novo ainda não tem preço na tabela).');
-      continue;
-    }
-    const r = await query('SELECT fn_buscar_preco($1, \'VENDA\', $2, $3, $4, $5, $6) AS preco',
-      [empresaId, g.classe.id, g.data, g.cliente.id, g.floresta.id, g.empreiteiro?.id || null]);
-    if (r.rows[0].preco === null) { l.status = 'erro'; l.erros.push(`Sem valor da tonelada e sem preço de venda na tabela para ${g.cliente.nome} · ${g.classe.nome} nesta data.`); }
-    else l.avisos.push(`Valor pela tabela de preços: R$ ${Number(r.rows[0].preco).toFixed(2).replace('.', ',')}/t.`);
   }
 
   // Cadastros novos só entram se alguma linha que vai ser importada usar
@@ -645,14 +644,16 @@ async function gravar(empresaId, usuarioId, analise, origem) {
         const obs = [g.obs, `Importada de ${origem} (linha ${l.linha})`].filter(Boolean).join(' · ');
         await cliente.query(
           `INSERT INTO viagens (empresa_id, numero_viagem, data, ticket, placa, cliente_id, floresta_id, empreiteiro_id, classe_id,
-                                peso_liquido, valor_tonelada, hora_pesagem, volume_m3, observacoes, criado_por, motorista_id)
+                                peso_liquido, valor_tonelada, hora_pesagem, volume_m3, observacoes, criado_por, motorista_id,
+                                valor_ton_floresta, valor_ton_empreiteiro)
            VALUES ($1, (SELECT (COALESCE(MAX(numero_viagem::int), 0) + 1)::text FROM viagens
                          WHERE empresa_id = $1 AND cliente_id = $5 AND numero_viagem ~ '^[0-9]+$'
                            AND date_trunc('month', data) = date_trunc('month', $2::date)),
-                   $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+                   $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
           [empresaId, g.data, g.ticket, g.placa, id('cliente'), id('floresta'), id('empreiteiro'), g.classe.id,
             g.peso, g.valorTon, g.hora, g.volume, obs.slice(0, 2000), usuarioId,
-            await idDoMotorista((sql, p) => cliente.query(sql, p), empresaId, g.motorista)]
+            await idDoMotorista((sql, p) => cliente.query(sql, p), empresaId, g.motorista),
+            g.valorFloresta ?? null, g.valorEmpreiteiro ?? null]
         );
         importadas++;
       }

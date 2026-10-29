@@ -2,7 +2,7 @@
 // FLORESTAS - de onde a madeira sai (Grazziotin, Alfredo Wagner, Gabirova...)
 //
 // Uma floresta não pertence a um cliente: ela vende para vários clientes.
-// O valor pago à floresta por tonelada fica na Tabela de Preços (tipo COMPRA).
+// O valor pago à floresta por tonelada é informado em cada viagem (os preços mudam).
 //
 // Permissões (mesmas do cadastro de clientes):
 //   Visualização -> só lista

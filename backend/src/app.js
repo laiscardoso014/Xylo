@@ -1,3 +1,5 @@
+const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -7,7 +9,28 @@ const { migracoesPendentes } = require('./config/conferirBanco');
 
 const app = express();
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+// Na hospedagem (Render etc.) existe um proxy na frente: o IP de verdade vem no
+// cabeçalho X-Forwarded-For. Sem isso, todos os visitantes pareceriam o mesmo IP
+// (e o limite de tentativas bloquearia todo mundo junto).
+if (process.env.RENDER || process.env.TRUST_PROXY) app.set('trust proxy', 1);
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  // Política de conteúdo das páginas: só carrega scripts/estilos do próprio site e das CDNs usadas
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      'script-src': ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
+      'script-src-attr': ["'none'"],
+      'style-src': ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://fonts.googleapis.com'],
+      'font-src': ["'self'", 'data:', 'https://cdnjs.cloudflare.com', 'https://fonts.gstatic.com'],
+      'img-src': ["'self'", 'data:', 'blob:'],
+      'connect-src': ["'self'"],
+      'frame-ancestors': ["'none'"],
+      'upgrade-insecure-requests': process.env.RENDER ? [] : null,
+    },
+  },
+}));
 app.use(
   cors({
     origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : true,
@@ -18,9 +41,15 @@ app.use(express.json({ limit: '1mb' })); // 1 MB: cabe a logo da empresa
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Xylo API (CTech) está no ar!' });
-});
+// O próprio servidor entrega as páginas (pasta frontend): site e API no mesmo endereço.
+// Assim, na web, basta UM serviço: https://seu-dominio/ (páginas) e https://seu-dominio/api (dados)
+const PASTA_FRONTEND = path.join(__dirname, '..', '..', 'frontend');
+if (fs.existsSync(path.join(PASTA_FRONTEND, 'index.html'))) {
+  app.use(express.static(PASTA_FRONTEND, { extensions: ['html'], maxAge: '1h' }));
+} else {
+  app.get('/', (req, res) => res.json({ message: 'Xylo API (CTech) está no ar!' }));
+}
+app.get('/api', (req, res) => res.json({ message: 'Xylo API (CTech) está no ar!' }));
 
 // Teste rápido do banco: abra http://localhost:3000/api/health no navegador
 app.get('/api/health', async (req, res) => {
@@ -41,7 +70,6 @@ app.use('/api/usuarios', require('./routes/usuarios.routes'));
 app.use('/api/clientes', require('./routes/clientes.routes'));
 app.use('/api/florestas', require('./routes/florestas.routes'));
 app.use('/api/empreiteiros', require('./routes/empreiteiros.routes'));
-app.use('/api/precos', require('./routes/precos.routes'));
 app.use('/api/viagens', require('./routes/viagens.routes'));
 app.use('/api/fretes', require('./routes/fretes.routes'));
 app.use('/api/despesas', require('./routes/despesas.routes'));

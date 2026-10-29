@@ -45,14 +45,14 @@ const FERRAMENTAS = {
         despesas_por_categoria: des.rows.map((d) => ({ categoria: d.categoria, valor: n(d.valor) })),
         despesas_total: despesas,
         resultado: faturamento - despesas,
-        a_pagar_pela_tabela_de_precos: { florestas: n(custos.rows[0].florestas), empreiteiros: n(custos.rows[0].empreiteiros) },
+        a_pagar_florestas_empreiteiros: { florestas: n(custos.rows[0].florestas), empreiteiros: n(custos.rows[0].empreiteiros) },
       };
     },
   },
 
   // -------------------------------------------------------------------
   conferir_mes: {
-    descricao: 'Confere os lançamentos de um mês e devolve os problemas encontrados: viagens sem ticket, preço diferente da tabela, peso fora do normal, possíveis duplicadas, placa repetida no dia, falta de preço de compra, empreiteiro com saldo negativo, fretes e despesas pendentes há mais de 30 dias. Use sempre que pedirem para conferir, verificar ou achar erros.',
+    descricao: 'Confere os lançamentos de um mês e devolve os problemas encontrados: viagens sem ticket, preço de venda muito fora da média, peso fora do normal, possíveis duplicadas, placa repetida no dia, viagens sem valor de compra da floresta ou do empreiteiro, empreiteiro com saldo negativo, fretes e despesas pendentes há mais de 30 dias. Use sempre que pedirem para conferir, verificar ou achar erros.',
     parametros: { mes: MES },
     obrigatorios: ['mes'],
     async executar(empresaId, { mes }) {
@@ -141,27 +141,37 @@ const FERRAMENTAS = {
   },
 
   // -------------------------------------------------------------------
-  tabela_de_precos: {
-    descricao: 'Preços por tonelada válidos hoje. VENDA = o que o cliente paga; COMPRA = o que se paga à floresta; EMPREITADA = o que se paga ao empreiteiro. Pode filtrar por tipo e por parte do nome.',
+  precos_praticados: {
+    descricao: 'Preços por tonelada praticados nas viagens dos últimos 90 dias (os preços não são fixos: cada viagem tem os seus). VENDA = o que o cliente paga; COMPRA = o que se paga à floresta; EMPREITADA = o que se paga ao empreiteiro. Mostra o último valor, a média, o menor e o maior. Pode filtrar por tipo e por parte do nome.',
     parametros: {
       tipo: { type: 'string', enum: ['VENDA', 'COMPRA', 'EMPREITADA'] },
       nome: { type: 'string', description: 'Parte do nome do cliente, floresta ou empreiteiro' },
     },
     obrigatorios: [],
     async executar(empresaId, { tipo, nome }) {
-      const valores = [empresaId];
-      let extra = '';
-      if (tipo) { valores.push(tipo); extra += ` AND tp.tipo = $${valores.length}`; }
-      if (nome) { valores.push(`%${nome}%`); extra += ` AND COALESCE(c.nome, f.nome, e.nome) ILIKE $${valores.length}`; }
-      const { rows } = await query(
-        `SELECT tp.tipo, COALESCE(c.nome, f.nome, e.nome) AS para, cm.nome AS classe, tp.valor_tonelada,
-                to_char(tp.data_inicio,'YYYY-MM-DD') AS desde
-           FROM tabelas_precos tp JOIN classes_madeira cm ON cm.id = tp.classe_id
-           LEFT JOIN clientes c ON c.id = tp.cliente_id LEFT JOIN florestas f ON f.id = tp.floresta_id
-           LEFT JOIN empreiteiros e ON e.id = tp.empreiteiro_id
-          WHERE tp.empresa_id = $1 AND tp.data_inicio <= CURRENT_DATE AND (tp.data_fim IS NULL OR tp.data_fim >= CURRENT_DATE) ${extra}
-          ORDER BY tp.tipo, para, cm.nome LIMIT 80`, valores);
-      return { precos: rows.map((r) => ({ ...r, valor_tonelada: n(r.valor_tonelada) })) };
+      const fontes = {
+        VENDA: { coluna: 'v.valor_tonelada', join: 'JOIN clientes x ON x.id = v.cliente_id' },
+        COMPRA: { coluna: 'v.valor_ton_floresta', join: 'JOIN florestas x ON x.id = v.floresta_id' },
+        EMPREITADA: { coluna: 'v.valor_ton_empreiteiro', join: 'JOIN empreiteiros x ON x.id = v.empreiteiro_id' },
+      };
+      const precos = [];
+      for (const [tp, f] of Object.entries(fontes)) {
+        if (tipo && tipo !== tp) continue;
+        const valores = [empresaId];
+        let extra = '';
+        if (nome) { valores.push(`%${nome}%`); extra = ` AND x.nome ILIKE $2`; }
+        const { rows } = await query(
+          `SELECT x.nome AS para, cm.nome AS classe, COUNT(*)::int AS viagens,
+                  ROUND(AVG(${f.coluna}), 2) AS media, MIN(${f.coluna}) AS menor, MAX(${f.coluna}) AS maior,
+                  (ARRAY_AGG(${f.coluna} ORDER BY v.data DESC, v.id DESC))[1] AS ultimo,
+                  to_char(MAX(v.data), 'YYYY-MM-DD') AS ultima_data
+             FROM viagens v ${f.join} JOIN classes_madeira cm ON cm.id = v.classe_id
+            WHERE v.empresa_id = $1 AND v.status <> 'Cancelada' AND ${f.coluna} IS NOT NULL
+              AND v.data >= CURRENT_DATE - 90 ${extra}
+            GROUP BY x.nome, cm.nome ORDER BY x.nome, cm.nome LIMIT 60`, valores);
+        rows.forEach((r) => precos.push({ tipo: tp, ...r, media: n(r.media), menor: n(r.menor), maior: n(r.maior), ultimo: n(r.ultimo) }));
+      }
+      return { periodo: 'últimos 90 dias', precos };
     },
   },
 

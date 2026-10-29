@@ -104,7 +104,6 @@ const TELAS = {
   clientes: { titulo: 'Clientes', desenhar: () => telaCadastro(CADASTROS.clientes) },
   florestas: { titulo: 'Florestas', desenhar: () => telaCadastro(CADASTROS.florestas) },
   empreiteiros: { titulo: 'Empreiteiros', desenhar: () => telaCadastro(CADASTROS.empreiteiros) },
-  precos: { titulo: 'Tabela de preços', desenhar: telaPrecos },     // js/precos.js
   viagens: { titulo: 'Viagens', desenhar: telaViagens },            // js/viagens.js
   fretes: { titulo: 'Fretes', desenhar: telaFretes },               // js/fretes.js
   despesas: { titulo: 'Despesas', desenhar: telaDespesas },         // js/despesas.js

@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // 4. Painel de demonstração da abertura (gráfico interativo)
 //    Dados ILUSTRATIVOS: nenhum número real de cliente aparece no site.
 //    O faturamento é calculado a partir das toneladas de cada classe,
-//    do mesmo jeito que o sistema faz com a tabela de preços.
+//    (peso x preço por tonelada), como o sistema faz em cada viagem.
 // =====================================================================
 (function painelDemonstracao() {
   const painel = document.getElementById('demo-painel');

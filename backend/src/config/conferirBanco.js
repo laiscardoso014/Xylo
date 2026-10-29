@@ -27,6 +27,7 @@ const MIGRACOES = [
   { arquivo: 'migracao_email.sql', tabela: 'tokens_conta', coluna: null },
   { arquivo: 'migracao_faturas.sql', tabela: 'faturas', coluna: null },
   { arquivo: 'migracao_faturas.sql', tabela: 'empresas', coluna: 'mensalidade' },
+  { arquivo: 'migracao_precos_por_viagem.sql', funcao: 'fn_viagem_preparar', sem: 'fn_buscar_preco' },
 ];
 
 let pendentes = []; // arquivos que faltam rodar (usado na mensagem de erro das telas)
@@ -37,9 +38,15 @@ async function conferirBanco() {
       `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = current_schema()`);
     const existe = new Set(rows.map((r) => `${r.table_name}.${r.column_name}`));
     const tabelas = new Set(rows.map((r) => r.table_name));
-    pendentes = [...new Set(MIGRACOES
-      .filter((m) => (m.coluna ? !existe.has(`${m.tabela}.${m.coluna}`) : !tabelas.has(m.tabela)))
-      .map((m) => m.arquivo))];
+    // migrações que só trocam uma função: confere o texto da função no banco
+    const funcoes = new Map((await query(
+      `SELECT p.proname, p.prosrc FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = current_schema()`)).rows.map((r) => [r.proname, r.prosrc]));
+    const falta = (m) => {
+      if (m.funcao) return !funcoes.has(m.funcao) || funcoes.get(m.funcao).includes(m.sem);
+      return m.coluna ? !existe.has(`${m.tabela}.${m.coluna}`) : !tabelas.has(m.tabela);
+    };
+    pendentes = [...new Set(MIGRACOES.filter(falta).map((m) => m.arquivo))];
     if (pendentes.length) {
       const linha = '='.repeat(72);
       console.warn(`\n${linha}\n ⚠  BANCO DE DADOS DESATUALIZADO - algumas telas vão dar erro.\n`

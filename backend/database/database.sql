@@ -992,3 +992,63 @@ CREATE TABLE IF NOT EXISTS faturas (
 -- uma fatura (não cancelada) por empresa por mês
 CREATE UNIQUE INDEX IF NOT EXISTS ux_fatura_mes ON faturas (empresa_id, competencia) WHERE status <> 'Cancelada';
 CREATE INDEX IF NOT EXISTS ix_fatura_competencia ON faturas (competencia);
+
+-- =====================================================================
+-- FUSO HORÁRIO DO BANCO: datas de "hoje" (vencimentos, mês atual) no horário
+-- de Brasília, também quando o banco fica num servidor no exterior (nuvem).
+-- =====================================================================
+DO $$ BEGIN
+    EXECUTE format('ALTER DATABASE %I SET timezone TO %L', current_database(), 'America/Sao_Paulo');
+END $$;
+
+-- =====================================================================
+-- PREÇOS POR VIAGEM (mesmo conteúdo de migracao_precos_por_viagem.sql):
+-- os valores são digitados em cada viagem; o banco não busca mais na tabela de preços.
+-- =====================================================================
+CREATE OR REPLACE FUNCTION fn_viagem_preparar() RETURNS trigger AS $$
+BEGIN
+    IF NEW.placa IS NOT NULL THEN
+        NEW.placa := upper(regexp_replace(NEW.placa, '[^A-Za-z0-9 ]', '', 'g'));
+    END IF;
+
+    IF NEW.valor_tonelada IS NULL THEN
+        RAISE EXCEPTION 'Informe o valor de venda da tonelada da viagem.';
+    END IF;
+
+    -- sem empreiteiro único, não há valor de empreiteiro na viagem (a divisão tem o seu)
+    IF NEW.empreiteiro_id IS NULL THEN
+        NEW.valor_ton_empreiteiro := NULL;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Carga dividida entre empreiteiros: sem valor na parte, usa o valor da viagem (ou zero)
+CREATE OR REPLACE FUNCTION fn_viagem_empreiteiro_validar() RETURNS trigger AS $$
+DECLARE
+    v viagens%ROWTYPE;
+    soma NUMERIC;
+BEGIN
+    SELECT * INTO v FROM viagens WHERE id = NEW.viagem_id;
+
+    IF v.empreiteiro_id IS NOT NULL THEN
+        RAISE EXCEPTION 'A viagem % já tem empreiteiro único. Para dividir, deixe o empreiteiro da viagem vazio.', v.numero_viagem;
+    END IF;
+
+    SELECT COALESCE(SUM(peso_liquido), 0) INTO soma
+      FROM viagem_empreiteiros
+     WHERE viagem_id = NEW.viagem_id AND id IS DISTINCT FROM NEW.id;
+
+    IF soma + NEW.peso_liquido > v.peso_liquido THEN
+        RAISE EXCEPTION 'A soma das partes (% t) passa do peso da carga (% t).',
+                        soma + NEW.peso_liquido, v.peso_liquido;
+    END IF;
+
+    IF NEW.valor_tonelada IS NULL THEN
+        NEW.valor_tonelada := COALESCE(v.valor_ton_empreiteiro, 0);
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;

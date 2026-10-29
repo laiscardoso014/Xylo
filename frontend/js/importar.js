@@ -119,7 +119,7 @@ async function telaImportar() {
           </select>
         </label>
         <label class="opcao"><input type="checkbox" id="op-criar" ${estado.criar ? 'checked' : ''}> Cadastrar clientes, florestas e empreiteiros novos</label>
-        <label class="opcao"><input type="checkbox" id="op-valor" ${estado.valor ? 'checked' : ''}> Usar o valor da tonelada da planilha (desmarcado: usa a Tabela de preços)</label>
+        <p class="nota">O valor de venda vem da planilha (Vlr TON ou Vlr Total). Compra da floresta e valor do empreiteiro entram se a planilha tiver essas colunas; senão, complete depois em cada viagem.</p>
       </div>
       <p class="nota">Se a planilha tiver a coluna <strong>Cliente</strong>, ela vale sempre.</p>`;
   }
@@ -144,7 +144,7 @@ async function telaImportar() {
       : estado.tipo === 'viagens'
       ? [['Data', (d) => (d.data ? formatarDataISO(d.data) : '—')], ['Cliente', (d) => esc(d.cliente || '—')], ['Floresta', (d) => esc(d.floresta || '—')],
         ['Empreiteiro', (d) => esc(d.empreiteiro || '—')], ['Classe', (d) => esc(d.classe || '—')], ['Ticket', (d) => esc(d.ticket || '—')],
-        ['Placa', (d) => esc(d.placa || '—')], ['Peso', (d) => (d.peso !== null ? formatarPeso(d.peso) : '—'), 'num'], ['R$/t', (d) => (d.valor_tonelada ? formatarMoeda(d.valor_tonelada) : 'tabela'), 'num']]
+        ['Placa', (d) => esc(d.placa || '—')], ['Peso', (d) => (d.peso !== null ? formatarPeso(d.peso) : '—'), 'num'], ['R$/t', (d) => (d.valor_tonelada ? formatarMoeda(d.valor_tonelada) : '—'), 'num']]
       : [['Nome', (d) => `<strong>${esc(d.nome)}</strong>`], ['CPF/CNPJ', (d) => esc(d.cpf_cnpj ? formatarDocumento(d.cpf_cnpj) : '—')],
         ['Telefone', (d) => esc(d.telefone ? formatarTelefone(d.telefone) : '—')], ['Cidade', (d) => esc([d.cidade || d.municipio, d.estado].filter(Boolean).join('/') || '—')]];
 
@@ -200,7 +200,7 @@ async function telaImportar() {
         analisar();
       });
       $('#op-criar').addEventListener('change', (e) => { estado.criar = e.target.checked; analisar(); });
-      $('#op-valor').addEventListener('change', (e) => { estado.valor = e.target.checked; analisar(); });
+
     }
   }
 
@@ -219,7 +219,7 @@ async function telaImportar() {
           <h3><i class="fas fa-circle-check"></i> Importação concluída</h3>
           <p><strong>${res.importadas}</strong> ${res.importadas === 1 ? 'linha importada' : 'linhas importadas'} da aba "${esc(estado.analise.aba)}".
             ${res.duplicadas ? `${res.duplicadas} já existiam e ficaram de fora.` : ''} ${res.erros ? `${res.erros} com erro ficaram de fora.` : ''}</p>
-          ${criados ? `<p>Cadastros criados: ${esc(criados)}. Lembre de completar os dados deles (CNPJ, telefone) e os preços na Tabela de preços.</p>` : ''}
+          ${criados ? `<p>Cadastros criados: ${esc(criados)}. Lembre de completar os dados deles (CNPJ, telefone).</p>` : ''}
           <div class="acoes-form">
             ${estado.tipo === 'viagens' && meses.length ? `<a class="btn btn-primario" href="#viagens" data-mes="${meses[0]}" id="ver-importadas">Ver viagens de ${esc(meses[0].split('-').reverse().join('/'))}</a>` : ''}
             ${estado.tipo === 'fretes' && meses.length ? `<a class="btn btn-primario" href="#fretes" data-mes="${meses[0]}" id="ver-fretes-importados">Ver fretes de ${esc(meses[0].split('-').reverse().join('/'))}</a>` : ''}

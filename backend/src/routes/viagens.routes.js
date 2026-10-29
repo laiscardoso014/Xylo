@@ -4,12 +4,13 @@
 // Campos principais: cliente, nº da viagem, data, ticket, placa, floresta,
 // empreiteiro, classe, peso líquido, valor da tonelada e valor total.
 //
-// CÁLCULO AUTOMÁTICO (feito pelo banco, no trigger fn_viagem_preparar):
-//   - valor da tonelada vazio -> busca o preço de VENDA na tabela de preços
-//   - valor pago à floresta e ao empreiteiro -> buscados na tabela de preços
-//   - totais (peso x valor) -> colunas calculadas do banco
-// Os valores ficam gravados na viagem: mudar a tabela depois não altera
-// viagens antigas.
+// PREÇOS: não são fixos. Cada viagem guarda os SEUS valores por tonelada,
+// digitados ao lançar (ou ao ler o ticket):
+//   - venda ao cliente (valor_tonelada)            obrigatório
+//   - compra da floresta (valor_ton_floresta)      obrigatório (0 = floresta própria)
+//   - empreiteiro (valor_ton_empreiteiro)          obrigatório quando há empreiteiro
+// O formulário sugere os valores da última viagem parecida (GET /sugestoes).
+// Os totais (peso x valor) são colunas calculadas do banco.
 //
 // Permissões: Visualização só consulta; Administrador e Financeiro lançam e
 // corrigem; só o Administrador cancela (a viagem não é apagada, fica como
@@ -78,12 +79,7 @@ async function cadastrosDaEmpresa(empresaId, b) {
 // Traduz os erros do banco para mensagens claras
 function erroDaViagem(err, res, next) {
   if (err.code === '23505') return res.status(409).json({ erro: 'Já existe uma viagem com este ticket.' });
-  if (err.code === 'P0001' && /preço de venda/.test(err.message)) {
-    return res.status(400).json({
-      erro: 'Não há preço de venda cadastrado para este cliente e esta classe nessa data. '
-        + 'Cadastre na Tabela de Preços ou informe o valor da tonelada.',
-    });
-  }
+  if (err.code === 'P0001') return res.status(400).json({ erro: err.message });
   return next(err);
 }
 
@@ -94,7 +90,12 @@ const regrasViagem = [
   body('classe_id').isInt({ min: 1 }).withMessage('Escolha a classe de madeira.'),
   body('empreiteiro_id').optional({ values: 'falsy' }).isInt({ min: 1 }).withMessage('Empreiteiro inválido.'),
   body('peso_liquido').custom((v) => numeroValido(0.01)(v)).withMessage('Informe o peso líquido em toneladas (ex.: 46,79).'),
-  body('valor_tonelada').optional({ values: 'falsy' }).custom(numeroValido(0)).withMessage('Valor da tonelada inválido.'),
+  // Preços por tonelada da viagem (mudam de carga para carga)
+  body('valor_tonelada').custom(numeroValido(0)).withMessage('Informe o valor de venda da tonelada (ex.: 280,00).'),
+  body('valor_ton_floresta').custom(numeroValido(0)).withMessage('Informe o valor pago à floresta por tonelada (0 se a floresta é própria).'),
+  body('valor_ton_empreiteiro')
+    .if((v, { req }) => req.body.empreiteiro_id)
+    .custom(numeroValido(0)).withMessage('Informe o valor pago ao empreiteiro por tonelada.'),
   body('numero_viagem').optional({ values: 'falsy' }).isLength({ max: 20 }).withMessage('Nº da viagem muito longo.'),
   body('ticket').optional({ values: 'falsy' }).isLength({ max: 30 }).withMessage('Ticket muito longo.'),
   body('placa').optional({ values: 'falsy' }).isLength({ max: 20 }).withMessage('Placa muito longa.'),
@@ -125,25 +126,42 @@ router.get('/opcoes', async (req, res, next) => {
 });
 
 // ---------------------------------------------------------------------
-// PRÉVIA DE PREÇO   GET /api/viagens/preco?cliente_id=&floresta_id=&empreiteiro_id=&classe_id=&data=
-// Mostra no formulário o valor que a tabela de preços vai usar.
+// SUGESTÕES DE PREÇO   GET /api/viagens/sugestoes?cliente_id=&floresta_id=&empreiteiro_id=&classe_id=&ignorar_id=
+// Os preços mudam de carga para carga: o formulário mostra (e numa viagem
+// nova já preenche, marcado como "sugestão") o valor da ÚLTIMA viagem
+// parecida. Mesma classe primeiro; senão, a última de qualquer classe.
+//   -> { venda, floresta, empreiteiro }  cada um: { valor, data, numero_viagem, mesma_classe, classe } | null
 // ---------------------------------------------------------------------
 router.get(
-  '/preco',
-  [q('classe_id').isInt({ min: 1 }), q('data').isISO8601(), q('cliente_id').optional({ values: 'falsy' }).isInt(),
-    q('floresta_id').optional({ values: 'falsy' }).isInt(), q('empreiteiro_id').optional({ values: 'falsy' }).isInt()],
+  '/sugestoes',
+  [q('classe_id').optional({ values: 'falsy' }).isInt(), q('cliente_id').optional({ values: 'falsy' }).isInt(),
+    q('floresta_id').optional({ values: 'falsy' }).isInt(), q('empreiteiro_id').optional({ values: 'falsy' }).isInt(),
+    q('ignorar_id').optional({ values: 'falsy' }).isInt()],
   validar,
   async (req, res, next) => {
     try {
-      const p = [req.usuario.empresaId, req.query.classe_id, req.query.data,
-        idOuNulo(req.query.cliente_id), idOuNulo(req.query.floresta_id), idOuNulo(req.query.empreiteiro_id)];
-      const { rows } = await query(
-        `SELECT CASE WHEN $4::int IS NULL THEN NULL ELSE fn_buscar_preco($1, 'VENDA', $2, $3, $4, $5, NULL) END AS venda,
-                CASE WHEN $5::int IS NULL THEN NULL ELSE fn_buscar_preco($1, 'COMPRA', $2, $3, $4, $5, NULL) END AS compra,
-                CASE WHEN $6::int IS NULL THEN NULL ELSE fn_buscar_preco($1, 'EMPREITADA', $2, $3, NULL, $5, $6) END AS empreitada`,
-        p
-      );
-      res.json(rows[0]);
+      const e = req.usuario.empresaId;
+      const classe = idOuNulo(req.query.classe_id);
+      const ignorar = idOuNulo(req.query.ignorar_id);
+      // coluna = valor da viagem; filtro = quem (cliente/floresta/empreiteiro)
+      const ultima = async (coluna, filtro, id) => {
+        if (!id) return null;
+        const { rows } = await query(
+          `SELECT v.${coluna}::float AS valor, to_char(v.data, 'YYYY-MM-DD') AS data, v.numero_viagem,
+                  ($3::int IS NOT NULL AND v.classe_id = $3) AS mesma_classe, k.nome AS classe
+             FROM viagens v JOIN classes_madeira k ON k.id = v.classe_id
+            WHERE v.empresa_id = $1 AND v.${filtro} = $2 AND v.status <> 'Cancelada' AND v.${coluna} IS NOT NULL
+              AND ($4::int IS NULL OR v.id <> $4)
+            ORDER BY ($3::int IS NOT NULL AND v.classe_id = $3) DESC, v.data DESC, v.id DESC LIMIT 1`,
+          [e, id, classe, ignorar]);
+        return rows[0] || null;
+      };
+      const [venda, floresta, empreiteiro] = await Promise.all([
+        ultima('valor_tonelada', 'cliente_id', idOuNulo(req.query.cliente_id)),
+        ultima('valor_ton_floresta', 'floresta_id', idOuNulo(req.query.floresta_id)),
+        ultima('valor_ton_empreiteiro', 'empreiteiro_id', idOuNulo(req.query.empreiteiro_id)),
+      ]);
+      res.json({ venda, floresta, empreiteiro });
     } catch (err) {
       next(err);
     }
@@ -198,7 +216,7 @@ router.get(
 // ---------------------------------------------------------------------
 // LANÇAR   POST /api/viagens
 // Nº da viagem vazio -> o próximo número do cliente no mês (como na planilha)
-// Valor da tonelada vazio -> preço de venda da tabela de preços
+// Valores por tonelada (venda, floresta, empreiteiro): informados em cada viagem
 // ---------------------------------------------------------------------
 router.post('/', podeEditar, regrasViagem, validar, async (req, res, next) => {
   try {
@@ -209,19 +227,20 @@ router.post('/', podeEditar, regrasViagem, validar, async (req, res, next) => {
     const { rows } = await query(
       `INSERT INTO viagens (empresa_id, numero_viagem, data, ticket, placa, cliente_id, floresta_id,
                             empreiteiro_id, classe_id, peso_liquido, valor_tonelada, observacoes, criado_por,
-                            motorista_id, hora_pesagem)
+                            motorista_id, hora_pesagem, valor_ton_floresta, valor_ton_empreiteiro)
        VALUES ($1,
                COALESCE($2, (SELECT (COALESCE(MAX(numero_viagem::int), 0) + 1)::text
                                FROM viagens
                               WHERE empresa_id = $1 AND cliente_id = $6 AND numero_viagem ~ '^[0-9]+$'
                                 AND date_trunc('month', data) = date_trunc('month', $3::date))),
-               $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+               $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING id`,
       [
         req.usuario.empresaId, textoOuNulo(b.numero_viagem), b.data, textoOuNulo(b.ticket), textoOuNulo(b.placa),
         b.cliente_id, b.floresta_id, idOuNulo(b.empreiteiro_id), b.classe_id,
         lerNumero(b.peso_liquido), valorOuNulo(b.valor_tonelada), textoOuNulo(b.observacoes), req.usuario.id,
         await idDoMotorista(query, req.usuario.empresaId, b.motorista), horaOuNula(b.hora_pesagem),
+        valorOuNulo(b.valor_ton_floresta), idOuNulo(b.empreiteiro_id) ? valorOuNulo(b.valor_ton_empreiteiro) : null,
       ]
     );
     const nova = await query(`${SELECT_VIAGENS} WHERE v.id = $1`, [rows[0].id]);
@@ -233,8 +252,7 @@ router.post('/', podeEditar, regrasViagem, validar, async (req, res, next) => {
 
 // ---------------------------------------------------------------------
 // CORRIGIR   PUT /api/viagens/:id
-// Os valores da floresta e do empreiteiro são recalculados pela tabela de
-// preços na DATA DA VIAGEM (se mudou a classe, a floresta etc.).
+// Os valores por tonelada (venda, floresta, empreiteiro) são os informados.
 // ---------------------------------------------------------------------
 router.put('/:id', podeEditar, [param('id').isInt({ min: 1 }), ...regrasViagem], validar, async (req, res, next) => {
   try {
@@ -252,13 +270,14 @@ router.put('/:id', podeEditar, [param('id').isInt({ min: 1 }), ...regrasViagem],
           cliente_id = $7, floresta_id = $8, empreiteiro_id = $9, classe_id = $10,
           peso_liquido = $11, valor_tonelada = $12, observacoes = $13,
           motorista_id = $14, hora_pesagem = $15,
-          valor_ton_floresta = NULL, valor_ton_empreiteiro = NULL   -- recalcula pela tabela
+          valor_ton_floresta = $16, valor_ton_empreiteiro = $17
         WHERE id = $1 AND empresa_id = $2`,
       [
         req.params.id, req.usuario.empresaId, textoOuNulo(b.numero_viagem), b.data, textoOuNulo(b.ticket), textoOuNulo(b.placa),
         b.cliente_id, b.floresta_id, idOuNulo(b.empreiteiro_id), b.classe_id,
         lerNumero(b.peso_liquido), valorOuNulo(b.valor_tonelada), textoOuNulo(b.observacoes),
         await idDoMotorista(query, req.usuario.empresaId, b.motorista), horaOuNula(b.hora_pesagem),
+        valorOuNulo(b.valor_ton_floresta), idOuNulo(b.empreiteiro_id) ? valorOuNulo(b.valor_ton_empreiteiro) : null,
       ]
     );
     const { rows } = await query(`${SELECT_VIAGENS} WHERE v.id = $1`, [req.params.id]);

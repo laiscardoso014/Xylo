@@ -4,7 +4,8 @@
 --  Para o banco que JÁ ESTÁ rodando (não apaga nada). Pode rodar mais
 --  de uma vez sem problema. Dentro da pasta backend:
 --
----- =====================================================================
+--    & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d db_woodcontrol -f database/migracao_painel_dev.sql
+-- =====================================================================
 
 BEGIN;
 

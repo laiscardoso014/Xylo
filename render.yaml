@@ -1,0 +1,38 @@
+# =====================================================================
+# Render (render.com): publica o Xylo como UM serviço web (páginas + API).
+# No Render: New > Blueprint > escolha este repositório. Os valores marcados
+# com "sync: false" o Render pede na hora (não ficam no GitHub).
+# =====================================================================
+services:
+  - type: web
+    name: xylo
+    runtime: node
+    plan: free
+    region: virginia
+    rootDir: backend
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: TZ
+        value: America/Sao_Paulo
+      - key: CONNECTION_STRING       # Neon: a conexão DIRETA (sem "-pooler" no endereço)
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_URL                 # ex.: https://xylo.onrender.com ou https://www.seudominio.com.br
+        sync: false
+      - key: EMAIL_BREVO_CHAVE       # Brevo > SMTP & API > API Keys
+        sync: false
+      - key: EMAIL_REMETENTE         # ex.: Xylo <seuemail@gmail.com> (confirmado em Senders na Brevo)
+        sync: false
+      - key: ASSISTENTE_PROVEDOR
+        value: groq
+      - key: ASSISTENTE_CHAVE
+        sync: false
+      - key: ASSISTENTE_RESERVA
+        value: gemini
+      - key: ASSISTENTE_RESERVA_CHAVE
+        sync: false

@@ -93,7 +93,7 @@
     if (!c || !c.achados) return '';
     const destino = (regra) => (['fretes_atrasados'].includes(regra) ? ['fretes', 'Abrir fretes']
       : ['despesas_atrasadas', 'empreiteiro_negativo'].includes(regra) ? ['despesas', 'Abrir despesas']
-        : regra === 'sem_custo_floresta' ? ['precos', 'Abrir tabela de preços'] : ['viagens', 'Abrir viagens']);
+        : ['viagens', 'Abrir viagens']);
     if (!c.achados.length) return `<div class="conferencia ok">✔ ${c.viagens_conferidas} viagens conferidas, nenhum problema.</div>`;
     return `<div class="conferencia">${c.achados.map((a) => {
       const [tela, texto] = destino(a.regra);

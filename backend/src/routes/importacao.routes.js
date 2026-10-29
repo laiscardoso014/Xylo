@@ -38,7 +38,7 @@ function opcoes(req) {
     clienteFixo: req.query.cliente ? Number(req.query.cliente) : null,
     clienteOrigem: req.query.origem === 'bloco' ? 'bloco' : 'aba',
     criarCadastros: req.query.criar === '1',
-    usarValorDaPlanilha: req.query.valor !== '0',
+    usarValorDaPlanilha: true, // sem tabela de preços: o valor de venda sempre vem da planilha
   };
 }
 
@@ -94,7 +94,8 @@ const MODELOS = {
     dicas: [
       'Obrigatórios: Data, Cliente, Floresta, Classe e Peso líquido.',
       'Classe: Lixo, Fina, Média, Grossa ou Eucalipto (pode escrever "FINA 220", "COMPRIDA MEDIA"...).',
-      'Valor da tonelada: se ficar vazio, o sistema usa a Tabela de preços.',
+      'Valor da tonelada (venda) é obrigatório: Vlr TON, ou só o Vlr Total (valor fechado).',
+      'Opcional: colunas "Vlr Floresta" (compra) e "Vlr Empreiteiro". Sem elas, complete depois em cada viagem.',
       'Viagens com ticket já lançado (ou mesma data, placa e peso) são ignoradas: pode importar de novo sem duplicar.',
       'Também aceita a planilha antiga (abas com "Nº Ticket", "Local", "Terceiro", "Peso Líq.", "Vlr TON").',
     ],

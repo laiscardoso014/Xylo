@@ -100,8 +100,8 @@ router.get(
           ...d.despesas.por_categoria.map((c) => ({ grupo: 'Despesas (−)', item: c.categoria, qtd: c.qtd, valor: -Number(c.valor) })),
           { grupo: 'Despesas (−)', item: 'TOTAL DAS DESPESAS', valor: -d.despesas.valor },
           { grupo: 'Resultado (=)', item: 'FATURAMENTO − DESPESAS', valor: d.resultado },
-          { grupo: 'Previsão', item: 'A pagar às florestas (tabela de preços)', valor: d.custos_previstos.florestas },
-          { grupo: 'Previsão', item: 'A pagar aos empreiteiros (tabela de preços)', valor: d.custos_previstos.empreiteiros },
+          { grupo: 'Previsão', item: 'A pagar às florestas (valores das viagens)', valor: d.custos_previstos.florestas },
+          { grupo: 'Previsão', item: 'A pagar aos empreiteiros (valores das viagens)', valor: d.custos_previstos.empreiteiros },
         ];
         pasta.aba('Fechamento', {
           ...topo('Fechamento do mês'),
