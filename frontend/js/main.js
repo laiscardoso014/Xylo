@@ -118,6 +118,7 @@ const TELAS = {
   rotas: { titulo: 'Rotas e distâncias', desenhar: telaRotas, somenteEditor: true },      // js/rotas.js
   lixeira: { titulo: 'Lixeira', desenhar: telaLixeira, somenteAdmin: true },       // js/auditoria.js
   historico: { titulo: 'Histórico', desenhar: telaHistorico, somenteAdmin: true }, // js/auditoria.js
+  financeiro: { titulo: 'Financeiro · mensalidade do Xylo', desenhar: telaFinanceiro, somenteAdmin: true }, // js/financeiro.js
 };
 
 function navegar() {
@@ -373,8 +374,14 @@ async function telaUsuarios() {
                 <td><strong>${esc(u.nome)}</strong><div class="sub">${esc(u.email)}</div></td>
                 <td><span class="selo selo-perfil">${esc(u.perfil)}</span></td>
                 <td>${esc(formatarDataHora(u.ultimo_login))}</td>
-                <td><span class="selo ${u.ativo ? 'selo-ativo' : 'selo-inativo'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
-                <td class="acoes"><button type="button" class="icone-botao" data-editar="${u.id}" title="Perfil, situação e senha provisória"><i class="fas fa-pen"></i></button></td>
+                <td>${!u.ativo ? '<span class="selo selo-inativo">Inativo</span>'
+                  : u.email_confirmado === false
+                    ? `<span class="selo selo-pendente" title="${u.convite_enviado_em ? `Convite enviado em ${esc(formatarDataHora(u.convite_enviado_em))}` : 'Convite ainda não enviado'}"><i class="fas fa-envelope"></i> Aguardando confirmação</span>`
+                    : '<span class="selo selo-ativo">Ativo</span>'}</td>
+                <td class="acoes">
+                  ${u.ativo && u.email_confirmado === false ? `<button type="button" class="icone-botao" data-convite="${u.id}" title="Reenviar o e-mail de ativação" aria-label="Reenviar o e-mail de ativação para ${esc(u.nome)}"><i class="fas fa-paper-plane"></i></button>` : ''}
+                  <button type="button" class="icone-botao" data-editar="${u.id}" title="Perfil, situação e senha provisória"><i class="fas fa-pen"></i></button>
+                </td>
               </tr>`).join('')}
           </tbody>
         </table>`;
@@ -392,15 +399,57 @@ async function telaUsuarios() {
     return Array.from(n, (x) => letras[x % letras.length]).join('');
   };
 
+  // Resultado do envio do convite: avisa; no modo teste mostra o link para copiar
+  function avisarConvite(convite, nome) {
+    if (!convite) return;
+    if (convite.enviado) {
+      toast(`E-mail de ativação enviado para ${convite.para}. ${nome ? nome.split(' ')[0] : 'A pessoa'} confirma o e-mail e cria a senha pelo link.`);
+      return;
+    }
+    if (convite.modo_teste) {
+      abrirModal('E-mail não configurado (modo teste)', `
+        <p class="nota-tela"><i class="fas fa-circle-info"></i><span>O servidor ainda não tem e-mail configurado (EMAIL_* no arquivo .env), então nada foi enviado.
+          Copie o link abaixo e mande para <strong>${esc(convite.para)}</strong> (WhatsApp, por exemplo). Ele vale por 48 horas e só pode ser usado uma vez.</span></p>
+        <div class="campo"><label for="link-teste">Link de ativação</label>
+          <div class="linha-senha"><input id="link-teste" readonly value="${esc(convite.link_teste)}">
+          <button type="button" class="btn btn-secundario" id="copiar-link"><i class="fas fa-copy"></i> Copiar</button></div></div>
+        <div class="modal-rodape"><button type="button" class="btn btn-primario" data-cancelar>Fechar</button></div>`);
+      $('#copiar-link').addEventListener('click', async () => {
+        const campo = $('#link-teste');
+        campo.select();
+        try { await navigator.clipboard.writeText(campo.value); } catch { document.execCommand('copy'); }
+        toast('Link copiado.');
+      });
+      $('#modal-corpo [data-cancelar]').addEventListener('click', fecharModal);
+      return;
+    }
+    toast(`O usuário foi salvo, mas o e-mail não foi enviado: ${convite.erro || 'erro no servidor de e-mail'}. Use "Reenviar" depois de corrigir.`, 'erro');
+  }
+
+  async function reenviarConvite(u, botao) {
+    if (botao) botao.disabled = true;
+    try {
+      const r = await api(`/usuarios/${u.id}/convite`, { metodo: 'POST' });
+      avisarConvite(r.convite, u.nome);
+      carregar();
+    } catch (erro) {
+      toast(mensagemErro(erro), 'erro');
+    } finally {
+      if (botao) botao.disabled = false;
+    }
+  }
+
   function formularioUsuario(u = {}) {
     const souEu = u.id === usuario.id;
     const novo = !u.id;
+    const pendente = !novo && u.email_confirmado === false;
     abrirModal(novo ? 'Novo usuário' : 'Acesso do usuário', `
       <form novalidate>
         <div class="grade-campos">
           ${novo ? `
             <div class="campo larga"><label>Nome *</label><input name="nome" required maxlength="100"></div>
-            <div class="campo larga"><label>E-mail (login) *</label><input name="email" type="email" required maxlength="150"></div>`
+            <div class="campo larga"><label>E-mail (login) *</label><input name="email" type="email" required maxlength="150" autocomplete="off" spellcheck="false"></div>
+            <p class="nota larga"><i class="fas fa-envelope-circle-check"></i> A pessoa recebe um e-mail com um link para confirmar o endereço e criar a própria senha. Ela só consegue entrar depois disso.</p>`
           : `
             <div class="campo larga dados-pessoais">
               <span class="avatar grande" aria-hidden="true">${esc(iniciais(u.nome))}</span>
@@ -421,19 +470,28 @@ async function telaUsuarios() {
               <option value="false" ${u.ativo === false ? 'selected' : ''}>Inativo</option>
             </select>
           </div>
-          ${souEu ? '' : `
+          ${souEu || novo ? '' : pendente ? `
           <div class="campo larga">
-            <label>${novo ? 'Senha provisória *' : 'Nova senha provisória (para quem esqueceu)'}</label>
+            <label>Ativação</label>
+            <p class="nota"><i class="fas fa-envelope"></i> Ainda não confirmou o e-mail${u.convite_enviado_em ? ` (convite enviado em ${esc(formatarDataHora(u.convite_enviado_em))})` : ''}.
+              Ao confirmar, cria a própria senha.</p>
+            <button type="button" class="btn btn-secundario" id="reenviar-convite"><i class="fas fa-paper-plane"></i> Reenviar o e-mail de ativação</button>
+          </div>` : `
+          <div class="campo larga">
+            <label>Nova senha provisória (para quem esqueceu)</label>
             <div class="linha-senha">
-              <input name="senha" type="text" minlength="6" autocomplete="off" spellcheck="false" ${novo ? 'required' : ''}>
+              <input name="senha" type="text" minlength="6" autocomplete="off" spellcheck="false">
               <button type="button" class="btn btn-secundario" id="gerar-provisoria">Gerar</button>
             </div>
-            <small>${novo ? 'Passe para a pessoa: no primeiro acesso ela é obrigada a criar a senha dela.' : 'Deixe em branco para não mexer. Se preencher, a pessoa entra com ela e é obrigada a criar uma nova.'}</small>
+            <small>Deixe em branco para não mexer. Se preencher, a pessoa entra com ela e é obrigada a criar uma nova. (Ela também pode usar "Esqueci minha senha" no login.)</small>
           </div>`}
         </div>
         ${RODAPE_FORMULARIO}
       </form>`);
 
+    if (novo) conferirCampoEmail($('#modal-corpo [name="email"]'));
+    const reenviar = $('#reenviar-convite');
+    if (reenviar) reenviar.addEventListener('click', () => reenviarConvite(u, reenviar));
     const gerar = $('#gerar-provisoria');
     if (gerar) gerar.addEventListener('click', () => { $('#modal-corpo [name="senha"]').value = gerarProvisoria(); });
 
@@ -445,8 +503,14 @@ async function telaUsuarios() {
         if (dados.senha) corpo.senha = dados.senha;
       }
       if (novo) {
-        await api('/usuarios', { metodo: 'POST', corpo: { ...corpo, nome: dados.nome, email: dados.email } });
-        toast('Usuário criado. Passe a senha provisória para a pessoa.');
+        const criado = await api('/usuarios', { metodo: 'POST', corpo: { ...corpo, nome: dados.nome, email: dados.email } });
+        carregar();
+        if (criado.convite && criado.convite.modo_teste) {
+          avisarConvite(criado.convite, criado.nome); // troca o conteúdo do modal pelo link
+          return false;
+        }
+        avisarConvite(criado.convite, criado.nome);
+        return undefined;
       } else if (!souEu) {
         await api(`/usuarios/${u.id}`, { metodo: 'PUT', corpo });
         toast(dados.senha ? 'Senha provisória definida.' : 'Acesso atualizado.');
@@ -460,6 +524,7 @@ async function telaUsuarios() {
     if (!alvo) return;
     if (alvo.id === 'btn-novo-usuario') formularioUsuario();
     if (alvo.dataset.editar) formularioUsuario(usuarios.find((u) => u.id === Number(alvo.dataset.editar)));
+    if (alvo.dataset.convite) reenviarConvite(usuarios.find((u) => u.id === Number(alvo.dataset.convite)), alvo);
   };
 
   carregar();
@@ -506,6 +571,7 @@ function abrirTrocaSenha(obrigatoria = false) {
 
 // Começa
 navegar();
+if (PERFIL.admin) atualizarBadgeFatura(); // js/financeiro.js
 
 // Entrou com senha provisória? Obriga a criar uma senha própria antes de usar o sistema.
 if (usuario.deve_trocar_senha) abrirTrocaSenha(true);

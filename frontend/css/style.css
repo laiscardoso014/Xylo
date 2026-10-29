@@ -2623,3 +2623,8 @@ small.aviso-campo, .campo small.aviso-campo, .form-group small.aviso-campo { dis
 small.aviso-campo[hidden] { display: none; }
 input[aria-invalid="true"] { border-color: #dc2626 !important; }
 input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important; }
+
+/* Aviso do e-mail (comum.js: conferirCampoEmail) */
+small.aviso-campo.aviso-leve { color: #92400e; }
+small.aviso-campo .aviso-usar { margin-left: 4px; padding: 1px 8px; border: 1px solid currentColor; border-radius: 999px; background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+small.aviso-campo .aviso-usar:hover { background: rgba(146, 64, 14, 0.08); }

@@ -1163,3 +1163,58 @@ a.btn { font-size: 14px; }
     .pendente { flex-wrap: wrap; }
     .faixa-linha input { width: 70px; }
 }
+
+/* Aviso do e-mail (comum.js: conferirCampoEmail) */
+small.aviso-campo.aviso-leve { color: #92400e; }
+small.aviso-campo .aviso-usar { margin-left: 4px; padding: 1px 8px; border: 1px solid currentColor; border-radius: 999px; background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+small.aviso-campo .aviso-usar:hover { background: rgba(146, 64, 14, 0.08); }
+@media screen { [data-tema="escuro"] small.aviso-campo.aviso-leve { color: #fcd34d; } }
+.selo-pendente { background: #fef3c7; color: #92400e; white-space: nowrap; }
+.selo-pendente i { margin-right: 4px; }
+@media screen { [data-tema="escuro"] .selo-pendente { background: #3a2a0c; color: #fcd34d; } }
+.toast.aviso { background: #92400e; }
+
+/* =====================================================================
+   FINANCEIRO (mensalidade do Xylo) e COBRANÇA no painel
+   ===================================================================== */
+.selo-aberta { background: #dbeafe; color: #1e40af; }
+.selo-vencida { background: #fee2e2; color: #991b1b; }
+.tabela .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tabela-faturas td.acoes { white-space: nowrap; }
+.tabela-faturas .acoes .btn { margin-right: 4px; }
+.linha-vencida td:first-child { box-shadow: inset 3px 0 0 #dc2626; }
+.cartao-alerta .cartao-icone { background: #fee2e2; color: #b91c1c; }
+.badge-alerta { background: #dc2626 !important; }
+
+.aviso-fatura { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 16px; padding: 12px 16px; border-radius: var(--radius);
+    background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; font-size: 14px; }
+.aviso-fatura span { flex: 1; min-width: 200px; }
+.aviso-fatura.vencida { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+.pagar-pix { display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: start; }
+.pagar-qr { background: #fff; padding: 8px; border-radius: 12px; border: 1px solid var(--gray-200); line-height: 0; }
+.pagar-qr svg { width: 100%; height: auto; }
+.valor-pix { font-size: 28px; font-weight: 800; color: var(--gray-900) !important; margin: 0 0 4px; font-variant-numeric: tabular-nums; }
+.passos-pix { margin: 10px 0 12px 18px; color: var(--texto-suave); font-size: 13.5px; }
+.rotulo-pix { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--gray-900); }
+.codigo-pix { width: 100%; resize: none; font: 12px/1.4 ui-monospace, 'Cascadia Code', Consolas, monospace; padding: 8px 10px; margin-bottom: 8px;
+    border: 1px solid var(--gray-300); border-radius: 8px; background: var(--gray-50); color: var(--gray-900); word-break: break-all; }
+@media (max-width: 640px) {
+    .pagar-pix { grid-template-columns: 1fr; justify-items: center; }
+    .pagar-pix > div:last-child { width: 100%; }
+    .pagar-qr { max-width: 240px; }
+}
+@media screen {
+    [data-tema="escuro"] .selo-aberta { background: #172554; color: #93c5fd; }
+    [data-tema="escuro"] .selo-vencida { background: #3a1719; color: #fca5a5; }
+    [data-tema="escuro"] .aviso-fatura { background: #13213d; border-color: #1e3a8a; color: #bfdbfe; }
+    [data-tema="escuro"] .aviso-fatura.vencida { background: #2a1416; border-color: #5b2226; color: #fca5a5; }
+    [data-tema="escuro"] .cartao-alerta .cartao-icone { background: #3a1719; color: #fca5a5; }
+}
+.menu-itens a .badge {
+    margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 999px;
+    background: var(--wood-500); color: #fff; font-size: 12px; font-weight: 700; text-align: center;
+}
+.menu-itens a .badge:empty { display: none; }
+.menu-itens a .badge.badge-alerta { background: #dc2626; }
+.modal-medio .modal { width: min(780px, 100%); }

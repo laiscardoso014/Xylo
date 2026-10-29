@@ -431,3 +431,44 @@ small.aviso-campo, .campo small.aviso-campo, .form-group small.aviso-campo { dis
 small.aviso-campo[hidden] { display: none; }
 input[aria-invalid="true"] { border-color: #dc2626 !important; }
 input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important; }
+
+/* Aviso do e-mail (comum.js: conferirCampoEmail) */
+small.aviso-campo.aviso-leve { color: #92400e; }
+small.aviso-campo .aviso-usar { margin-left: 4px; padding: 1px 8px; border: 1px solid currentColor; border-radius: 999px; background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+small.aviso-campo .aviso-usar:hover { background: rgba(146, 64, 14, 0.08); }
+
+/* Esqueci minha senha / reenviar ativação (login.js) */
+.login-links { display: flex; justify-content: flex-end; margin: -8px 0 16px; }
+.login-links[hidden] { display: none; }
+.link-discreto { border: 0; background: none; padding: 2px 0; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--green-700); cursor: pointer; }
+.link-discreto:hover { text-decoration: underline; }
+.link-discreto:focus-visible { outline: 3px solid rgba(22, 163, 74, 0.45); outline-offset: 2px; border-radius: 4px; }
+.voltar-login { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 14px; }
+.voltar-login[hidden] { display: none; }
+.login-ok { display: none; align-items: flex-start; gap: 10px; margin-bottom: 18px; padding: 12px 14px; border-radius: var(--radius-sm);
+    background: var(--green-50); border: 1px solid var(--green-200); color: var(--green-900); font-size: 14px; line-height: 1.4; }
+.login-ok.visivel { display: flex; }
+.login-ok i { margin-top: 2px; color: var(--green-700); }
+.login-error { flex-wrap: wrap; }
+.login-error span { flex: 1; min-width: 0; }
+.login-reenviar { flex-basis: 100%; margin: 4px 0 0 24px; padding: 8px 12px; border: 1px solid #fca5a5; border-radius: 8px; background: #fff;
+    color: #991b1b; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; text-align: left; }
+.login-reenviar[hidden] { display: none; }
+.login-reenviar:hover { background: #fee2e2; }
+.login-reenviar:disabled { opacity: .7; cursor: wait; }
+.form-group[hidden] { display: none; }
+.pagina-confirmar { grid-template-columns: 1fr; }
+.pagina-confirmar .login-form-section { min-height: 100vh; }
+.pagina-confirmar .mobile-logo { display: flex; }
+.confirmar-estado { text-align: center; }
+.confirmar-estado .estado-icone { width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; background: var(--green-100); color: var(--green-700); }
+.confirmar-estado .estado-icone.ruim { background: #fee2e2; color: #b91c1c; }
+.confirmar-estado h2 { margin: 0 0 8px; font-size: 22px; color: var(--gray-900); }
+.confirmar-estado p { margin: 0 0 20px; color: var(--gray-600); line-height: 1.5; }
+.confirmar-email { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--gray-50); border: 1px solid var(--gray-200); font-size: 14px; color: var(--gray-700); word-break: break-all; }
+.confirmar-email i { color: var(--green-700); }
+.regras-senha { list-style: none; margin: -6px 0 18px; padding: 0; font-size: 13px; color: var(--gray-500); display: grid; gap: 4px; }
+.regras-senha li::before { content: "○"; display: inline-block; width: 18px; }
+.regras-senha li.ok { color: var(--green-700); }
+.regras-senha li.ok::before { content: "✓"; font-weight: 800; }
+a.login-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }

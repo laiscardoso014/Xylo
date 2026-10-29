@@ -26,9 +26,9 @@ async function main() {
     const hash = await bcrypt.hash(SENHA, 10);
 
     await client.query(
-      `INSERT INTO usuarios (empresa_id, nome, email, senha_hash, perfil_id)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (empresa_id, email) DO UPDATE SET senha_hash = EXCLUDED.senha_hash`,
+      `INSERT INTO usuarios (empresa_id, nome, email, senha_hash, perfil_id, email_confirmado_em)
+       VALUES ($1, $2, $3, $4, $5, now())
+       ON CONFLICT (empresa_id, email) DO UPDATE SET senha_hash = EXCLUDED.senha_hash, email_confirmado_em = now()`,
       [empresaId, 'Administrador', EMAIL, hash, perfil.rows[0].id]
     );
 

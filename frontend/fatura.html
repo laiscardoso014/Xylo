@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Fatura | Xylo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/fatura.css">
+</head>
+
+<body>
+    <!-- Barra de ações (não sai na impressão) -->
+    <div class="acoes-fatura">
+        <a href="main.html#financeiro" class="voltar" id="link-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <span class="espaco"></span>
+        <button type="button" id="btn-copiar-topo" class="botao secundario" hidden><i class="fas fa-copy"></i> Copiar código PIX</button>
+        <button type="button" id="btn-imprimir" class="botao"><i class="fas fa-print"></i> Imprimir / salvar PDF</button>
+    </div>
+
+    <!-- A fatura (folha A4) -->
+    <main class="folha" id="folha">
+        <p class="carregando" id="carregando">Carregando a fatura…</p>
+    </main>
+
+    <div class="aviso-copiado" id="aviso" role="status" hidden></div>
+
+    <script src="js/comum.js"></script>
+    <script src="js/qrcode.js"></script>
+    <script src="js/fatura.js"></script>
+</body>
+
+</html>

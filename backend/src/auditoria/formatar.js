@@ -40,7 +40,7 @@ const CAMPOS = {
   tipo: 'Tipo de preço', data_inicio: 'Vigente desde', data_fim: 'Vigente até', observacao: 'Observação', observacoes: 'Observações',
   nome: 'Nome', razao_social: 'Razão social', cpf_cnpj: 'CPF/CNPJ', cnpj: 'CNPJ', telefone: 'Telefone', email: 'E-mail',
   cidade: 'Cidade', estado: 'UF', uf: 'UF', municipio: 'Município', proprietario: 'Proprietário', endereco: 'Endereço',
-  ativo: 'Ativo', deve_trocar_senha: 'Senha provisória', senha: 'Senha', logo: 'Logo',
+  ativo: 'Ativo', deve_trocar_senha: 'Senha provisória', email_confirmado_em: 'E-mail confirmado em', senha: 'Senha', logo: 'Logo',
   cargo: 'Cargo', cpf: 'CPF', data_admissao: 'Admissão', salario_base: 'Salário base', alimentacao: 'Alimentação',
   competencia: 'Competência', comissao: 'Comissão', extras: 'Extras', adiantamento: 'Adiantamento', desconto: 'Desconto',
   saldo_pagar: 'Saldo a pagar', comissao_manual: 'Comissão digitada à mão', funcionario_id: 'Funcionário',

@@ -279,6 +279,61 @@ const mascaraDocumento = (input) => aplicarMascara(input, { max: 14, formatar: m
 const mascaraTelefone = (input) => aplicarMascara(input, { max: 11, formatar: montarTelefone, problema: problemaTelefone });
 
 // ---------------------------------------------------------------------
+// E-MAIL: ao sair do campo, pergunta à API se o e-mail parece existir
+// (formato, domínio que recebe e-mail, erro de digitação como "gmial.com").
+// Erro certo = aviso vermelho e o formulário não envia.
+// Suspeita = aviso amarelo com botão "Usar ...", mas deixa enviar.
+// (A prova final é o link que a pessoa recebe no e-mail.)
+// ---------------------------------------------------------------------
+function conferirCampoEmail(input) {
+  if (!input || input.dataset.conferirEmail) return;
+  input.dataset.conferirEmail = '1';
+  const aviso = document.createElement('small');
+  aviso.className = 'aviso-campo';
+  aviso.id = `${input.id || input.name || 'email'}-aviso-${Math.random().toString(36).slice(2, 7)}`;
+  aviso.hidden = true;
+  aviso.setAttribute('aria-live', 'polite');
+  (input.closest('.input-wrapper') || input).insertAdjacentElement('afterend', aviso);
+  input.setAttribute('aria-describedby', aviso.id);
+  const original = input.value.trim().toLowerCase(); // e-mail que já estava salvo não precisa conferir
+  let consulta = 0;
+
+  const mostrar = (texto, tipo, sugestao) => {
+    aviso.hidden = !texto;
+    aviso.classList.toggle('aviso-leve', tipo === 'leve');
+    aviso.textContent = texto || '';
+    if (sugestao) {
+      const usar = document.createElement('button');
+      usar.type = 'button';
+      usar.className = 'aviso-usar';
+      usar.textContent = `Usar ${sugestao}`;
+      usar.addEventListener('click', () => { input.value = sugestao; input.dispatchEvent(new Event('change')); input.focus(); });
+      aviso.append(' ', usar);
+    }
+    const erro = tipo === 'erro' ? texto : '';
+    input.setAttribute('aria-invalid', erro ? 'true' : 'false');
+    input.setCustomValidity(erro);
+  };
+
+  const conferir = async () => {
+    const valor = input.value.trim();
+    const minha = ++consulta;
+    if (!valor || valor.toLowerCase() === original) return mostrar('');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) return mostrar('Este e-mail não está num formato válido (ex.: nome@empresa.com.br).', 'erro');
+    try {
+      const r = await requisicao(`/conta/email?email=${encodeURIComponent(valor)}`);
+      if (minha !== consulta || !r.ok || !r.dados) return; // resposta velha, ou API sem conferência: não atrapalha
+      if (!r.dados.ok) mostrar(r.dados.motivo, 'erro', r.dados.sugestao);
+      else if (r.dados.aviso) mostrar(r.dados.aviso, 'leve', r.dados.sugestao);
+      else mostrar('');
+    } catch { /* sem conexão: o envio do formulário mostra o erro */ }
+  };
+  input.addEventListener('blur', conferir);
+  input.addEventListener('change', conferir);
+  input.addEventListener('input', () => { if (!aviso.hidden) { consulta++; mostrar(''); } });
+}
+
+// ---------------------------------------------------------------------
 // Comunicação com a API
 // ---------------------------------------------------------------------
 
@@ -308,6 +363,8 @@ async function requisicao(caminho, { metodo = 'GET', corpo, token } = {}) {
 function erroDaResposta(dados) {
   const erro = new Error((dados && dados.erro) || 'Erro na requisição.');
   erro.detalhes = dados && dados.detalhes;
+  erro.codigo = dados && dados.codigo;       // ex.: EMAIL_NAO_CONFIRMADO no login
+  erro.sugestao = dados && dados.sugestao;   // ex.: e-mail com domínio corrigido
   return erro;
 }
 
@@ -368,7 +425,7 @@ function abrirModal(titulo, html) {
 function fecharModal() {
   if (Modal.obrigatorio) return;
   $('#modal').hidden = true;
-  $('#modal').classList.remove('modal-largo', 'modal-ticket', 'modal-amplo');
+  $('#modal').classList.remove('modal-largo', 'modal-ticket', 'modal-amplo', 'modal-medio');
   $('#modal-corpo').innerHTML = '';
   $('#modal-fechar').hidden = false;
 }

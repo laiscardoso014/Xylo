@@ -36,6 +36,7 @@
     padding: 12px 14px; border-radius: 10px; font-size: 13px;
     background: var(--wood-100); color: var(--wood-700); margin-bottom: 16px;
 }
+.aviso-info.ok { background: var(--green-50); color: var(--green-800); }
 
 /* Tela de login do painel */
 .dev-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--escuro); }
@@ -50,3 +51,4 @@
     .detalhes { grid-template-columns: 1fr; gap: 2px; }
     .detalhes dd { margin-bottom: 8px; }
 }
+

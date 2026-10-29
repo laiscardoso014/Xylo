@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---- 2. Máscaras (comum.js) ---------------------------------------------
   mascaraTelefone(document.getElementById('whatsapp'));
   mascaraCnpj(document.getElementById('cnpj'));
+  conferirCampoEmail(document.querySelector('#form-contratacao [name="email"]'));
 
   // ---- 3. Formulário de solicitação ---------------------------------------
   const form = document.getElementById('form-contratacao');

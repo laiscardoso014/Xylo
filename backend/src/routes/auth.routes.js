@@ -30,7 +30,7 @@ router.post(
       const { email, senha } = req.body;
 
       const { rows } = await query(
-        `SELECT u.id, u.nome, u.email, u.senha_hash, u.ativo AS usuario_ativo, u.deve_trocar_senha,
+        `SELECT u.id, u.nome, u.email, u.senha_hash, u.ativo AS usuario_ativo, u.deve_trocar_senha, u.email_confirmado_em,
                 u.empresa_id, p.nome AS perfil,
                 e.nome AS empresa_nome, e.ativo AS empresa_ativa
            FROM usuarios u
@@ -42,6 +42,15 @@ router.post(
 
       const usuario = rows[0];
       const senhaOk = usuario ? await bcrypt.compare(senha, usuario.senha_hash) : false;
+
+      // Conta criada por convite e ainda não ativada: ainda não existe senha
+      // (a pessoa cria pelo link do e-mail). Explica e oferece reenviar.
+      if (usuario && !usuario.email_confirmado_em && usuario.usuario_ativo && usuario.empresa_ativa) {
+        return res.status(403).json({
+          erro: 'Sua conta ainda não foi ativada. Abra o e-mail que enviamos e clique em "Confirmar e-mail e criar minha senha".',
+          codigo: 'EMAIL_NAO_CONFIRMADO',
+        });
+      }
 
       // Mesma mensagem para CNPJ, e-mail ou senha errados: não revela qual dado existe
       if (!usuario || !senhaOk) {

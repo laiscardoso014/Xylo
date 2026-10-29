@@ -46,6 +46,7 @@ const CLASSE_STATUS = {
 // Mostra os dados de acesso (só aparecem UMA vez: a senha não fica salva)
 // ---------------------------------------------------------------------
 function mostrarAcesso(titulo, acesso, nomePessoa, whatsapp) {
+  if (acesso.convite) return mostrarConvite(titulo, acesso, nomePessoa, whatsapp);
   const linkLogin = new URL('login.html', location.href).href;
   const mensagem =
 `Olá${nomePessoa ? ', ' + nomePessoa.split(' ')[0] : ''}! Seu acesso ao Xylo está pronto.
@@ -82,6 +83,38 @@ No primeiro acesso você vai criar a sua própria senha.`;
       toast('Texto selecionado: use Ctrl+C.');
     }
   });
+}
+
+// Empresa nova: o administrador recebe o e-mail de ativação (confirma o
+// e-mail e cria a senha). Aqui só mostramos se o e-mail saiu.
+function mostrarConvite(titulo, acesso, nomePessoa, whatsapp) {
+  const c = acesso.convite;
+  const primeiro = nomePessoa ? `, ${nomePessoa.split(' ')[0]}` : '';
+  const mensagem = c.modo_teste
+    ? `Olá${primeiro}! Seu acesso ao Xylo está pronto.\n\nAbra este link para confirmar o seu e-mail e criar a sua senha (vale 48 horas):\n${c.link_teste}\n\nDepois, entre com o CNPJ ${formatarCnpj(acesso.cnpj)} e o e-mail ${acesso.email}.`
+    : `Olá${primeiro}! Seu acesso ao Xylo está pronto.\n\nEnviamos um e-mail para ${acesso.email} com o link para confirmar o endereço e criar a sua senha (vale 48 horas). Confira também a caixa de spam.\n\nDepois, entre com o CNPJ ${formatarCnpj(acesso.cnpj)} e esse e-mail.`;
+  const aviso = c.enviado
+    ? `<div class="aviso-info ok"><i class="fas fa-envelope-circle-check"></i> E-mail de ativação enviado para <strong>${esc(acesso.email)}</strong>.</div>`
+    : c.modo_teste
+      ? '<div class="aviso-info"><i class="fas fa-triangle-exclamation"></i> Modo teste: o servidor não tem e-mail configurado (EMAIL_* no .env). Mande o link abaixo para a pessoa.</div>'
+      : `<div class="aviso-info"><i class="fas fa-triangle-exclamation"></i> A empresa foi criada, mas o e-mail não saiu: ${esc(c.erro || 'erro no servidor de e-mail')}. Corrija e use "Nova senha" do administrador, ou peça para a pessoa usar "Esqueci minha senha" no login.</div>`;
+  const fone = String(whatsapp || '').replace(/\D/g, '');
+  const linkWhats = fone && (c.enviado || c.modo_teste) ? `https://wa.me/55${fone}?text=${encodeURIComponent(mensagem)}` : '';
+  abrirModal(titulo, `
+    ${aviso}
+    ${c.enviado || c.modo_teste ? `<div class="credenciais" id="texto-acesso">${esc(mensagem)}</div>` : ''}
+    <div class="modal-rodape">
+      ${linkWhats ? `<a class="btn btn-secundario" href="${esc(linkWhats)}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Avisar no WhatsApp</a>` : ''}
+      ${c.enviado || c.modo_teste ? '<button type="button" class="btn btn-primario" id="btn-copiar"><i class="fas fa-copy"></i> Copiar mensagem</button>' : '<button type="button" class="btn btn-primario" data-cancelar>Fechar</button>'}
+    </div>`);
+  const copiar = $('#btn-copiar');
+  if (copiar) {
+    copiar.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(mensagem); toast('Mensagem copiada.'); } catch { toast('Selecione o texto e use Ctrl+C.'); }
+    });
+  }
+  const fechar = $('#modal-corpo [data-cancelar]');
+  if (fechar) fechar.addEventListener('click', fecharModal);
 }
 
 // ---------------------------------------------------------------------
@@ -134,6 +167,7 @@ const TELAS = {
   inicio: { titulo: 'Visão geral', desenhar: telaInicio },
   solicitacoes: { titulo: 'Solicitações', desenhar: telaSolicitacoes },
   empresas: { titulo: 'Empresas', desenhar: telaEmpresas },
+  cobranca: { titulo: 'Cobrança · mensalidades', desenhar: () => telaCobranca() }, // js/devCobranca.js
 };
 
 function navegar() {
@@ -152,6 +186,10 @@ async function atualizarBadge() {
   try {
     const r = await api('/resumo');
     $('#badge-pendentes').textContent = r.pendentes || '';
+    // Cobrança: faturas vencidas + pagamentos que a empresa avisou (para dar baixa)
+    const cobrar = (r.faturas_vencidas || 0) + (r.pagamentos_informados || 0);
+    $('#badge-cobranca').textContent = cobrar || '';
+    $('#badge-cobranca').title = cobrar ? `${r.faturas_vencidas || 0} vencida(s), ${r.pagamentos_informados || 0} pagamento(s) informado(s)` : '';
     return r;
   } catch {
     return null;
@@ -194,6 +232,9 @@ async function telaInicio() {
       ${cartao('fa-building', r.empresas_ativas, 'Empresas ativas', '#empresas')}
       ${cartao('fa-lock', r.empresas_bloqueadas, 'Empresas bloqueadas', '#empresas')}
       ${cartao('fa-users', r.usuarios_ativos, 'Usuários ativos', '#empresas')}
+      ${cartao('fa-sack-dollar', esc(formatarMoeda(r.recebido_mes || 0)), 'Recebido no mês', '#cobranca')}
+      ${cartao('fa-triangle-exclamation', r.faturas_vencidas || 0, 'Faturas vencidas', '#cobranca')}
+      ${cartao('fa-bell', r.pagamentos_informados || 0, 'Pagamentos para confirmar', '#cobranca')}
     </div>`;
 }
 
@@ -323,6 +364,7 @@ async function telaSolicitacoes() {
         </div>
       </form>`);
     mascaraCnpj($('#ap-cnpj'));
+    conferirCampoEmail($('#modal-corpo [name="admin_email"]'));
 
     ligarFormulario(async (dados) => {
       const r = await api(`/solicitacoes/${s.id}/aprovar`, { metodo: 'POST', corpo: dados });
@@ -389,16 +431,19 @@ async function telaEmpresas() {
     box.className = 'tabela-wrap';
     box.innerHTML = `
       <table class="tabela">
-        <thead><tr><th>Empresa</th><th>Administrador</th><th>Uso</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead>
+        <thead><tr><th>Empresa</th><th>Administrador</th><th>Uso</th><th>Mensalidade</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead>
         <tbody>
           ${lista.map((e) => `
             <tr class="${e.ativo ? '' : 'inativo'}">
               <td><strong>${esc(e.nome)}</strong><div class="sub">${esc(formatarCnpj(e.cnpj))}</div></td>
               <td>${esc(e.admin_email || '–')}</td>
               <td>${e.usuarios} usuário(s)<div class="sub">${e.viagens} viagem(ns)</div></td>
+              <td>${e.mensalidade ? `${esc(formatarMoeda(e.mensalidade))}<div class="sub">vence dia ${e.dia_vencimento}${e.cobrar_desde ? ` · desde ${esc(e.cobrar_desde.split('-').reverse().join('/'))}` : ''}</div>` : '<span class="sub">não cobrada</span>'}
+                ${e.faturas_vencidas ? `<div><span class="selo selo-vencida">${e.faturas_vencidas} vencida(s)</span></div>` : ''}</td>
               <td>${esc(formatarDataHora(e.ultimo_acesso))}</td>
               <td><span class="selo ${e.ativo ? 'selo-ativo' : 'selo-recusada'}">${e.ativo ? 'Ativa' : 'Bloqueada'}</span></td>
               <td class="acoes">
+                <button type="button" class="icone-botao" data-plano="${e.id}" title="Mensalidade e vencimento" aria-label="Mensalidade de ${esc(e.nome)}"><i class="fas fa-receipt"></i></button>
                 <button type="button" class="icone-botao" data-senha="${e.id}" title="Gerar nova senha do administrador"><i class="fas fa-key"></i></button>
                 ${e.ativo
                   ? `<button type="button" class="icone-botao perigo" data-bloquear="${e.id}" title="Bloquear acesso"><i class="fas fa-lock"></i></button>`
@@ -428,6 +473,7 @@ async function telaEmpresas() {
         </div>
       </form>`);
     mascaraCnpj($('#ne-cnpj'));
+    conferirCampoEmail($('#modal-corpo [name="admin_email"]'));
     mascaraTelefone($('#ne-telefone'));
 
     ligarFormulario(async (dados) => {
@@ -444,6 +490,7 @@ async function telaEmpresas() {
     const empresa = (id) => empresas.find((e) => e.id === Number(id));
     try {
       if (alvo.id === 'btn-nova-empresa') novaEmpresa();
+      if (alvo.dataset.plano) editarPlano(empresa(alvo.dataset.plano), carregar); // js/devCobranca.js
 
       if (alvo.dataset.bloquear) {
         const e = empresa(alvo.dataset.bloquear);

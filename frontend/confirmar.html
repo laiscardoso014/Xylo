@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex">
+    <title>Ativar acesso | Xylo</title>
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- =========================================================
+         LINK DO E-MAIL: confirmar o e-mail e criar a senha
+         (convite, nova senha) ou confirmar um e-mail novo.
+         O js/confirmar.js decide o que mostrar pelo link (?t=...).
+    ========================================================== -->
+
+    <main class="login-page pagina-confirmar">
+
+        <section class="login-form-section">
+
+            <div class="login-card">
+
+                <div class="login-card-header">
+                    <div class="mobile-logo">
+                        <div class="mobile-logo-icon">
+                            <svg class="xylo-marca" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" transform="rotate(45 12 12)"/><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" opacity=".72" transform="rotate(-45 12 12)"/><circle cx="12" cy="12" r="1.5" fill="#15803d"/></svg>
+                        </div>
+                        <span>Xylo</span>
+                    </div>
+                </div>
+
+                <!-- Conferindo o link -->
+                <div id="carregando" class="confirmar-estado">
+                    <div class="estado-icone"><i class="fas fa-spinner fa-spin"></i></div>
+                    <p>Conferindo o link…</p>
+                </div>
+
+                <!-- Criar a senha (convite / nova senha) -->
+                <form id="formSenha" hidden>
+                    <div class="login-card-header">
+                        <span class="welcome-label" id="senhaRotulo">Ativar acesso</span>
+                        <h2 id="senhaTitulo">Crie a sua senha</h2>
+                        <p id="senhaTexto"></p>
+                    </div>
+
+                    <div class="confirmar-email"><i class="fas fa-envelope-circle-check"></i><span id="senhaEmail"></span></div>
+
+                    <div class="form-group">
+                        <label for="senha"><i class="fas fa-lock"></i> Nova senha</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="senha" placeholder="Pelo menos 8 caracteres" autocomplete="new-password" minlength="8" maxlength="100" required>
+                            <button type="button" class="toggle-password" data-mostrar="senha" aria-label="Mostrar senha"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+
+                    <ul class="regras-senha" id="regras">
+                        <li data-regra="tamanho">Pelo menos 8 caracteres</li>
+                        <li data-regra="letra">Pelo menos uma letra</li>
+                        <li data-regra="numero">Pelo menos um número</li>
+                    </ul>
+
+                    <div class="form-group">
+                        <label for="senha2"><i class="fas fa-lock"></i> Repita a senha</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="senha2" placeholder="Digite de novo" autocomplete="new-password" maxlength="100" required>
+                        </div>
+                    </div>
+
+                    <div class="login-error" role="alert" aria-live="polite"><i class="fas fa-circle-exclamation"></i><span></span></div>
+
+                    <button type="submit" class="login-button">
+                        <span class="login-button-text"><i class="fas fa-check"></i> <span id="senhaBotao">Ativar meu acesso</span></span>
+                        <span class="login-loading" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Salvando...</span>
+                    </button>
+                </form>
+
+                <!-- Confirmar e-mail novo (troca de e-mail) -->
+                <form id="formEmail" hidden>
+                    <div class="login-card-header">
+                        <span class="welcome-label">Troca de e-mail</span>
+                        <h2>Confirme o novo e-mail</h2>
+                        <p id="emailTexto"></p>
+                    </div>
+
+                    <div class="confirmar-email"><i class="fas fa-envelope-circle-check"></i><span id="emailNovo"></span></div>
+
+                    <div class="login-error" role="alert" aria-live="polite"><i class="fas fa-circle-exclamation"></i><span></span></div>
+
+                    <button type="submit" class="login-button">
+                        <span class="login-button-text"><i class="fas fa-check"></i> Confirmar o novo e-mail</span>
+                        <span class="login-loading" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Confirmando...</span>
+                    </button>
+                </form>
+
+                <!-- Deu certo / link com problema -->
+                <div id="resultado" class="confirmar-estado" hidden>
+                    <div class="estado-icone" id="resultadoIcone"><i class="fas fa-check"></i></div>
+                    <h2 id="resultadoTitulo"></h2>
+                    <p id="resultadoTexto"></p>
+                    <a class="login-button" id="resultadoBotao" href="login.html"><i class="fas fa-right-to-bracket"></i> Ir para o login</a>
+                </div>
+
+                <a href="login.html" class="back-home" id="linkLogin"><i class="fas fa-arrow-left"></i> Voltar para o login</a>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="js/comum.js"></script>
+    <script src="js/confirmar.js"></script>
+
+</body>
+
+</html>

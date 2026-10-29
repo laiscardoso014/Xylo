@@ -11,6 +11,7 @@
 //   POST /api/dev/empresas                     cadastra empresa sem solicitação
 //   PUT  /api/dev/empresas/:id                 bloquear/desbloquear, editar dados
 //   POST /api/dev/empresas/:id/nova-senha-admin   gera nova senha provisória do admin
+//   /api/dev/cobranca/...                      mensalidade: faturas com PIX (devCobranca.routes.js)
 // =====================================================================
 const express = require('express');
 const crypto = require('crypto');
@@ -19,6 +20,9 @@ const jwt = require('jsonwebtoken');
 const { body, param, validationResult } = require('express-validator');
 const { pool, query } = require('../config/db');
 const { cnpjValido, telefoneValido, MSG } = require('../utils/documentos');
+
+const { enviarLink } = require('../conta/emails');
+const { conferirEmail } = require('../conta/conferirEmail');
 
 const router = express.Router();
 
@@ -77,18 +81,34 @@ async function criarEmpresaComAdmin(client, d) {
   )).rows[0];
   // (as classes de madeira padrão são criadas pelo trigger do banco)
 
-  const senha = gerarSenhaProvisoria();
-  const hash = await bcrypt.hash(senha, 10);
-  await client.query(
+  // Sem senha: o administrador recebe o convite por e-mail, confirma o e-mail e cria a senha
+  const hash = await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 10);
+  const admin = await client.query(
     `INSERT INTO usuarios (empresa_id, perfil_id, nome, email, senha_hash, deve_trocar_senha)
-     VALUES ($1, (SELECT id FROM perfis WHERE nome = 'Administrador'), $2, lower($3), $4, TRUE)`,
-    [empresa.id, d.admin_nome, d.admin_email, hash]
+     VALUES ($1, (SELECT id FROM perfis WHERE nome = 'Administrador'), $2, lower($3), $4, FALSE) RETURNING id`,
+    [empresa.id, d.admin_nome, d.admin_email.trim(), hash]
   );
 
   return {
     empresa,
-    acesso: { cnpj: empresa.cnpj, email: d.admin_email.toLowerCase(), senha_provisoria: senha },
+    adminId: admin.rows[0].id,
+    acesso: { cnpj: empresa.cnpj, email: d.admin_email.trim().toLowerCase() },
   };
+}
+
+// Depois do COMMIT: manda o convite ao administrador da empresa nova
+async function convidarAdmin(resultado, adminNome) {
+  const convite = await enviarLink(query, resultado.adminId, 'convite', resultado.acesso.email,
+    { nome: adminNome, empresa: resultado.empresa.nome, perfil: 'Administrador', quemCriou: 'A equipe CTech' });
+  const { adminId, ...resto } = resultado;
+  return { ...resto, acesso: { ...resto.acesso, convite } };
+}
+
+// E-mail do administrador: confere formato e domínio antes de criar
+async function emailDoAdminOk(req, res) {
+  const conf = await conferirEmail(req.body.admin_email);
+  if (!conf.ok) { res.status(400).json({ erro: conf.motivo, sugestao: conf.sugestao }); return false; }
+  return true;
 }
 
 const regrasEmpresa = [
@@ -131,6 +151,9 @@ router.post(
 // Daqui para baixo, só com login do painel
 router.use(autenticarDev);
 
+// Cobrança da mensalidade (faturas com PIX)
+router.use('/cobranca', require('./devCobranca.routes'));
+
 // =====================================================================
 // RESUMO
 // =====================================================================
@@ -142,7 +165,11 @@ router.get('/resumo', async (req, res, next) => {
         (SELECT COUNT(*) FROM solicitacoes_acesso WHERE status = 'Em contato') ::int AS em_contato,
         (SELECT COUNT(*) FROM empresas WHERE ativo)                            ::int AS empresas_ativas,
         (SELECT COUNT(*) FROM empresas WHERE NOT ativo)                        ::int AS empresas_bloqueadas,
-        (SELECT COUNT(*) FROM usuarios WHERE ativo)                            ::int AS usuarios_ativos`);
+        (SELECT COUNT(*) FROM usuarios WHERE ativo)                            ::int AS usuarios_ativos,
+        (SELECT COUNT(*) FROM faturas WHERE status = 'Aberta' AND vencimento < current_date) ::int AS faturas_vencidas,
+        (SELECT COUNT(*) FROM faturas WHERE status = 'Aberta' AND informado_em IS NOT NULL)  ::int AS pagamentos_informados,
+        (SELECT COALESCE(SUM(valor_pago), 0) FROM faturas
+          WHERE status = 'Paga' AND date_trunc('month', pago_em) = date_trunc('month', current_date))::float AS recebido_mes`);
     res.json(rows[0]);
   } catch (err) {
     next(err);
@@ -207,6 +234,7 @@ router.post(
   [param('id').isInt({ min: 1 }), ...regrasEmpresa],
   validar,
   async (req, res, next) => {
+    if (!(await emailDoAdminOk(req, res))) return;
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -231,7 +259,7 @@ router.post(
         [sol.id, resultado.empresa.id, req.dev.id]
       );
       await client.query('COMMIT');
-      res.status(201).json(resultado);
+      res.status(201).json(await convidarAdmin(resultado, req.body.admin_nome));
     } catch (err) {
       await client.query('ROLLBACK');
       if (err.status) return res.status(err.status).json({ erro: err.message });
@@ -249,6 +277,8 @@ router.get('/empresas', async (req, res, next) => {
   try {
     const { rows } = await query(`
       SELECT e.id, e.nome, e.razao_social, e.cnpj, e.email, e.telefone, e.ativo, e.created_at,
+             e.mensalidade::float AS mensalidade, e.dia_vencimento, to_char(e.cobrar_desde, 'YYYY-MM') AS cobrar_desde,
+             (SELECT COUNT(*) FROM faturas f WHERE f.empresa_id = e.id AND f.status = 'Aberta' AND f.vencimento < current_date)::int AS faturas_vencidas,
              (SELECT COUNT(*) FROM usuarios u WHERE u.empresa_id = e.id AND u.ativo)::int AS usuarios,
              (SELECT COUNT(*) FROM viagens v  WHERE v.empresa_id = e.id)::int            AS viagens,
              (SELECT MAX(u.ultimo_login) FROM usuarios u WHERE u.empresa_id = e.id)      AS ultimo_acesso,
@@ -264,12 +294,13 @@ router.get('/empresas', async (req, res, next) => {
 
 // Cadastro direto (sem solicitação), ex.: empresa que fechou por telefone
 router.post('/empresas', regrasEmpresa, validar, async (req, res, next) => {
+  if (!(await emailDoAdminOk(req, res))) return;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const resultado = await criarEmpresaComAdmin(client, req.body);
     await client.query('COMMIT');
-    res.status(201).json(resultado);
+    res.status(201).json(await convidarAdmin(resultado, req.body.admin_nome));
   } catch (err) {
     await client.query('ROLLBACK');
     if (err.status) return res.status(err.status).json({ erro: err.message });
@@ -327,7 +358,9 @@ router.post('/empresas/:id/nova-senha-admin', [param('id').isInt({ min: 1 })], v
     if (!admin) return res.status(404).json({ erro: 'Esta empresa não tem administrador.' });
 
     const senha = gerarSenhaProvisoria();
-    await query('UPDATE usuarios SET senha_hash = $2, deve_trocar_senha = TRUE, ativo = TRUE WHERE id = $1',
+    // Suporte da CTech (falou com a pessoa): a senha provisória também libera quem ainda não confirmou o e-mail
+    await query(`UPDATE usuarios SET senha_hash = $2, deve_trocar_senha = TRUE, ativo = TRUE,
+                        email_confirmado_em = COALESCE(email_confirmado_em, now()) WHERE id = $1`,
       [admin.id, await bcrypt.hash(senha, 10)]);
     res.json({ acesso: { cnpj: admin.cnpj, email: admin.email, senha_provisoria: senha } });
   } catch (err) {

@@ -34,6 +34,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/conta', require('./routes/conta.routes'));            // pública: links do e-mail (confirmar, criar senha)
 app.use('/api/solicitacoes', require('./routes/solicitacoes.routes')); // pública (página de venda)
 app.use('/api/dev', require('./routes/dev.routes'));                 // painel do desenvolvedor
 app.use('/api/usuarios', require('./routes/usuarios.routes'));
@@ -54,6 +55,7 @@ app.use('/api/lixeira', require('./routes/lixeira.routes'));       // excluir co
 app.use('/api/historico', require('./routes/historico.routes'));   // auditoria (só admin)
 app.use('/api/funcionarios', require('./routes/funcionarios.routes')); // folha: cadastro e faixas de comissão
 app.use('/api/rotas', require('./routes/rotas.routes'));           // distâncias para a comissão
+app.use('/api/faturas', require('./routes/faturas.routes'));     // mensalidade do Xylo (admin da empresa)
 app.use('/api/folha', require('./routes/folha.routes'));           // folha de pagamento e adiantamentos
 
 app.use((req, res) => {

@@ -20,6 +20,7 @@ const mesLongo = (m) => `${MESES_LONGOS[Number(m.slice(5, 7)) - 1]} de ${m.slice
 const moedaCompacta = (v) => `R$ ${Graficos.compacto.format(v)}`;
 
 async function telaInicio() {
+  setTimeout(() => avisoDeFatura($('#aviso-fatura')), 0); // js/financeiro.js
   conteudo.innerHTML = `
     <div class="painel-topo">
       <div>
@@ -28,6 +29,7 @@ async function telaInicio() {
       </div>
       <label class="filtro-campo">Mês <input type="month" id="mes-painel" value="${mesPainel}"></label>
     </div>
+    <div id="aviso-fatura"></div>
 
     <div id="painel">
       <div class="cartoes cartoes-kpi" id="kpis"></div>

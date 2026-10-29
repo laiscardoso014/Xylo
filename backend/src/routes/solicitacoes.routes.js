@@ -3,6 +3,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
+const { conferirEmail } = require('../conta/conferirEmail');
 const { cnpjValido, telefoneValido, MSG } = require('../utils/documentos');
 
 const router = express.Router();
@@ -49,6 +50,8 @@ router.post(
       }
 
       const b = req.body;
+      const conf = await conferirEmail(b.email);
+      if (!conf.ok) return res.status(400).json({ erro: conf.motivo, sugestao: conf.sugestao, detalhes: [{ campo: 'email', mensagem: conf.motivo }] });
       await query(
         `INSERT INTO solicitacoes_acesso
            (nome_completo, whatsapp, email_corporativo, nome_empresa, cnpj,

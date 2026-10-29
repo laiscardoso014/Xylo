@@ -65,8 +65,9 @@ async function telaPerfil() {
           <div class="campo" id="campo-confirma-email" hidden>
             <label for="p-senha-email">Sua senha atual</label>
             <input id="p-senha-email" name="senha_atual" type="password" autocomplete="current-password">
-            <small>Para trocar o e-mail de login, confirme que é você.</small>
+            <small>Para trocar o e-mail de login, confirme que é você. Vamos mandar um link para o e-mail novo: o login só muda depois que você clicar nele.</small>
           </div>
+          <p class="nota" id="email-pendente" style="margin: 0 0 14px" ${eu.email_pendente ? '' : 'hidden'}><i class="fas fa-envelope"></i> <span>${eu.email_pendente ? `Aguardando você confirmar <strong>${esc(eu.email_pendente)}</strong> pelo link enviado. Até lá, o login continua com ${esc(eu.email)}.` : ''}</span></p>
           <div class="campo"><label for="p-telefone">Telefone / WhatsApp</label><input id="p-telefone" name="telefone" type="tel" placeholder="(49) 99999-9999" value="${esc(eu.telefone || '')}"></div>
           <div class="form-erro" hidden></div>
           <div class="acoes-form"><button type="submit" class="btn btn-primario"><i class="fas fa-check"></i> Salvar dados</button></div>
@@ -92,6 +93,7 @@ async function telaPerfil() {
     </div>`;
 
   mascaraTelefone($('#p-telefone'));
+  conferirCampoEmail($('#p-email'));
 
   // Trocou o e-mail? Pede a senha atual
   $('#p-email').addEventListener('input', (e) => {
@@ -154,7 +156,19 @@ async function telaPerfil() {
     $('#perfil-avatar').textContent = iniciais(eu.nome);
     $('#campo-confirma-email').hidden = true;
     $('#p-senha-email').value = '';
-    toast('Seus dados foram atualizados.');
+    const conf = eu.confirmacao_email;
+    if (conf) {
+      // o e-mail de login ainda é o antigo: volta o campo e mostra o aviso
+      $('#p-email').value = eu.email;
+      const aviso = $('#email-pendente');
+      aviso.querySelector('span').innerHTML = `Aguardando você confirmar <strong>${esc(conf.para)}</strong> pelo link enviado. Até lá, o login continua com ${esc(eu.email)}.`;
+      aviso.hidden = false;
+      toast(conf.enviado
+        ? `Enviamos um link para ${conf.para}. Abra esse e-mail e confirme: só então o login muda.`
+        : 'Modo teste: o servidor não tem e-mail configurado. O link de confirmação apareceu no console do servidor.', conf.enviado ? 'ok' : 'aviso');
+    } else {
+      toast('Seus dados foram atualizados.');
+    }
   });
 
   ligar($('#form-senha'), async (d) => {
