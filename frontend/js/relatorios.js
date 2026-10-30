@@ -18,6 +18,7 @@ const RELATORIOS = {
   empreiteiros: { aba: 'Por empreiteiro',   titulo: 'Relatório por empreiteiro' },
   classes:      { aba: 'Por classe',        titulo: 'Totalização mensal por classe' },
   anual:        { aba: 'Anual',             titulo: 'Resumo anual' },
+  dre:          { aba: 'DRE',               titulo: 'DRE — Demonstração do Resultado' },  // js/dre.js
 };
 const NOMES_MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
   'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -52,6 +53,11 @@ async function telaRelatorios() {
   let pedido = 0; // ignora respostas atrasadas quando o usuário troca de aba depressa
 
   async function carregar() {
+    // DRE: tem filtros e exportação próprios (js/dre.js)
+    const dre = abaRelatorio === 'dre';
+    document.querySelector('.barra-ferramentas.so-tela').hidden = dre;
+    $('#cabecalho-impressao').hidden = dre;
+    if (dre) { exportavel = null; telaDRE($('#relatorio')); return; }
     mesRelatorio = $('#mes-relatorio').value || mesAtualISO();
     anoRelatorio = $('#ano-relatorio').value || mesAtualISO().slice(0, 4);
     const anual = abaRelatorio === 'anual';

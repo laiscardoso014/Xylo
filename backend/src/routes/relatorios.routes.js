@@ -13,9 +13,10 @@
 // Viagens e fretes cancelados e despesas canceladas ficam fora de tudo.
 // =====================================================================
 const express = require('express');
-const { query: q, validationResult } = require('express-validator');
+const { query: q, body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
-const { autenticar } = require('../middlewares/auth');
+const { autenticar, podeEditar } = require('../middlewares/auth');
+const { lerNumero } = require('../utils/numeros');
 
 const router = express.Router();
 router.use(autenticar);
@@ -37,6 +38,7 @@ const rota = (fn) => async (req, res, next) => {
   try {
     res.json(await fn(req));
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ erro: err.message });
     next(err);
   }
 };
@@ -260,6 +262,57 @@ router.get('/diario', exigeMes, async (req, res, next) => {
     next(err);
   }
 });
+
+// ---------------------------------------------------------------------
+// DRE (Demonstração do Resultado do Exercício) - regras em src/relatorios/dre.js
+//   GET /api/relatorios/dre?de=2026-01&ate=2026-03&comparar=anterior|ano_anterior&mensal=1
+//   GET /api/relatorios/dre/config      grupos das categorias + dados fiscais
+//   PUT /api/relatorios/dre/config      (Administrador e Financeiro)
+// ---------------------------------------------------------------------
+const DRE = require('../relatorios/dre');
+const mesValido = /^\d{4}-(0[1-9]|1[0-2])$/;
+router.get('/dre',
+  [q('de').matches(mesValido).withMessage('Informe o mês inicial (AAAA-MM).'),
+    q('ate').matches(mesValido).withMessage('Informe o mês final (AAAA-MM).'),
+    q('comparar').optional({ values: 'falsy' }).isIn(['anterior', 'ano_anterior']),
+    q('mensal').optional().isIn(['0', '1'])],
+  validar,
+  rota((req) => {
+    const { de, ate } = req.query;
+    if (DRE.mesesEntre(de < ate ? de : ate, de < ate ? ate : de).length > 36) {
+      const erro = new Error('Escolha um período de até 36 meses.'); erro.status = 400; throw erro;
+    }
+    return DRE.calcularDRE(req.usuario.empresaId, { de, ate, comparar: req.query.comparar || null, mensal: req.query.mensal === '1' });
+  }));
+
+router.get('/dre/config', rota(async (req) => ({ ...(await DRE.lerConfig(req.usuario.empresaId)), grupos: DRE.GRUPOS, regimes: DRE.REGIMES })));
+
+router.put('/dre/config', podeEditar,
+  [body('categorias').optional().isArray(),
+    body('categorias.*.id').isInt({ min: 1 }),
+    body('categorias.*.grupo_dre').isIn(Object.keys(DRE.GRUPOS)).withMessage('Grupo da DRE inválido.'),
+    body('fiscal').optional().isObject(),
+    body('fiscal.regime_tributario').optional({ values: 'falsy' }).isIn(Object.keys(DRE.REGIMES)).withMessage('Regime tributário inválido.'),
+    body('fiscal.aliquota_receita').optional({ values: 'null' }).custom((v) => Number.isFinite(lerNumero(v)) && lerNumero(v) >= 0 && lerNumero(v) <= 100).withMessage('Alíquota sobre a receita: de 0 a 100%.'),
+    body('fiscal.aliquota_ir_csll').optional({ values: 'null' }).custom((v) => Number.isFinite(lerNumero(v)) && lerNumero(v) >= 0 && lerNumero(v) <= 100).withMessage('Alíquota de IRPJ/CSLL: de 0 a 100%.'),
+    body('fiscal.base_ir_csll').optional().isIn(['lucro', 'receita'])],
+  validar,
+  rota(async (req) => {
+    const e = req.usuario.empresaId;
+    for (const c of req.body.categorias || []) {
+      await query('UPDATE categorias_despesa SET grupo_dre = $3 WHERE id = $1 AND empresa_id = $2', [c.id, e, c.grupo_dre]);
+    }
+    const f = req.body.fiscal;
+    if (f) {
+      if (req.usuario.perfil !== 'Administrador') {
+        const erro = new Error('Só o Administrador altera os dados fiscais.'); erro.status = 403; throw erro;
+      }
+      await query(
+        `UPDATE empresas SET regime_tributario = $2, aliquota_receita = $3, aliquota_ir_csll = $4, base_ir_csll = $5 WHERE id = $1`,
+        [e, f.regime_tributario || null, lerNumero(f.aliquota_receita ?? 0) || 0, lerNumero(f.aliquota_ir_csll ?? 0) || 0, f.base_ir_csll === 'receita' ? 'receita' : 'lucro']);
+    }
+    return { ...(await DRE.lerConfig(e)), grupos: DRE.GRUPOS, regimes: DRE.REGIMES };
+  }));
 
 module.exports = router;
 // As mesmas consultas, para a exportação em Excel (src/routes/exportacao.routes.js)

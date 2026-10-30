@@ -122,6 +122,85 @@ const regrasEmpresa = [
 ];
 
 // =====================================================================
+// HISTÓRICO DO PAINEL (dev_historico)
+// =====================================================================
+function registrar(dev, acao, area, detalhe, ip) {
+  query('INSERT INTO dev_historico (dev_id, dev_nome, acao, area, detalhe, ip) VALUES ($1, $2, $3, $4, $5, $6)',
+    [dev.id, dev.nome, acao.slice(0, 200), area, detalhe ? JSON.stringify(detalhe) : null, ip || null])
+    .catch((err) => console.warn('[painel] histórico não gravado:', err.message));
+}
+
+// Nome da empresa / fatura / membro citado na rota (para o texto ficar legível)
+async function nomeDe(tabela, id) {
+  const sql = {
+    empresas: 'SELECT nome FROM empresas WHERE id = $1',
+    solicitacoes: "SELECT nome_empresa || ' (' || nome_completo || ')' AS nome FROM solicitacoes_acesso WHERE id = $1",
+    faturas: "SELECT f.numero || ' · ' || e.nome AS nome FROM faturas f JOIN empresas e ON e.id = f.empresa_id WHERE f.id = $1",
+    equipe: 'SELECT nome FROM desenvolvedores WHERE id = $1',
+  }[tabela];
+  if (!sql) return `#${id}`;
+  try { const { rows } = await query(sql, [id]); return rows[0] ? rows[0].nome : `#${id}`; } catch { return `#${id}`; }
+}
+
+// O que foi feito, em palavras (pelo método + caminho)
+async function descrever(req) {
+  const m = req.method;
+  const c = req.path.replace(/\/+$/, '');
+  const b = req.body || {};
+  const id = (c.match(/\/(\d+)(?:\/|$)/) || [])[1];
+  const regras = [
+    [/^\/solicitacoes\/\d+\/aprovar$/, 'POST', 'solicitacoes', async () => `Aprovou a solicitação de ${await nomeDe('solicitacoes', id)} e criou a empresa`],
+    [/^\/solicitacoes\/\d+$/, 'PUT', 'solicitacoes', async () => `Atualizou a solicitação de ${await nomeDe('solicitacoes', id)}${b.status ? ` (situação: ${b.status})` : ''}`],
+    [/^\/solicitacoes\/\d+$/, 'DELETE', 'lixeira', async () => `Excluiu a solicitação de ${req.resumoAcao || `#${id}`}${b.motivo ? ` (motivo: ${b.motivo})` : ''}`],
+    [/^\/empresas$/, 'POST', 'empresas', async () => `Cadastrou a empresa ${b.nome || ''}`],
+    [/^\/empresas\/\d+$/, 'PUT', 'empresas', async () => {
+      const nome = await nomeDe('empresas', id);
+      if (b.ativo === false) return `Bloqueou a empresa ${nome}`;
+      if (b.ativo === true && Object.keys(b).length === 1) return `Desbloqueou a empresa ${nome}`;
+      return `Editou os dados da empresa ${nome}`;
+    }],
+    [/^\/empresas\/\d+\/nova-senha-admin$/, 'POST', 'empresas', async () => `Reenviou o acesso do administrador de ${await nomeDe('empresas', id)}`],
+    [/^\/cobranca\/config$/, 'PUT', 'cobranca', async () => 'Alterou os dados de recebimento (PIX)'],
+    [/^\/cobranca\/empresas\/\d+$/, 'PUT', 'cobranca', async () => `Alterou a mensalidade de ${await nomeDe('empresas', id)}`],
+    [/^\/cobranca\/gerar$/, 'POST', 'cobranca', async () => `Gerou as faturas de ${b.mes || 'um mês'}${b.empresa_id ? ` para ${await nomeDe('empresas', b.empresa_id)}` : ''}`],
+    [/^\/cobranca\/faturas\/\d+\/pagar$/, 'POST', 'cobranca', async () => `Deu baixa na fatura ${await nomeDe('faturas', id)}`],
+    [/^\/cobranca\/faturas\/\d+\/desfazer-pagamento$/, 'POST', 'cobranca', async () => `Desfez o pagamento da fatura ${await nomeDe('faturas', id)}`],
+    [/^\/cobranca\/faturas\/\d+\/cancelar$/, 'POST', 'cobranca', async () => `Cancelou a fatura ${await nomeDe('faturas', id)}${b.motivo ? ` (motivo: ${b.motivo})` : ''}`],
+    [/^\/cobranca\/faturas\/\d+\/email$/, 'POST', 'cobranca', async () => `Reenviou por e-mail a fatura ${await nomeDe('faturas', id)}`],
+    [/^\/equipe$/, 'POST', 'equipe', async () => `Adicionou ${b.nome || ''} à equipe`],
+    [/^\/equipe\/\d+$/, 'PUT', 'equipe', async () => {
+      const nome = await nomeDe('equipe', id);
+      if (b.ativo === false) return `Desativou o acesso de ${nome}`;
+      if (b.ativo === true) return `Reativou o acesso de ${nome}`;
+      return `Editou o cadastro de ${nome}`;
+    }],
+    [/^\/equipe\/\d+\/senha$/, 'POST', 'equipe', async () => `Definiu uma senha nova para ${await nomeDe('equipe', id)}`],
+    [/^\/minha-senha$/, 'PUT', 'equipe', async () => 'Trocou a própria senha'],
+    [/^\/lixeira\/\d+\/restaurar$/, 'POST', 'lixeira', async () => `Restaurou da lixeira: ${req.resumoAcao || `#${id}`}`],
+    [/^\/lixeira\/\d+$/, 'DELETE', 'lixeira', async () => `Apagou de vez da lixeira: ${req.resumoAcao || `#${id}`}`],
+  ];
+  const regra = regras.find(([re, metodo]) => metodo === m && re.test(c));
+  if (!regra) return { acao: `${m} ${c}`, area: 'outros' };
+  return { acao: await regra[3](), area: regra[2] };
+}
+
+function registrarAcao(req, res, next) {
+  if (req.method === 'GET') return next();
+  // nomes que a ação apaga/cria são lidos ANTES (ex.: nome da solicitação excluída)
+  res.on('finish', async () => {
+    if (res.statusCode >= 400) return;
+    try {
+      const { acao, area } = await descrever(req);
+      const { senha, nova, atual, ...resto } = req.body || {};
+      registrar(req.dev, acao, area, Object.keys(resto).length ? resto : null, req.ip);
+    } catch (err) {
+      console.warn('[painel] histórico não gravado:', err.message);
+    }
+  });
+  next();
+}
+
+// =====================================================================
 // LOGIN DO PAINEL   POST /api/dev/login   { email, senha }
 // =====================================================================
 router.post(
@@ -140,6 +219,7 @@ router.post(
       if (!dev || !ok || !dev.ativo) return res.status(401).json({ erro: 'E-mail ou senha inválidos.' });
 
       await query('UPDATE desenvolvedores SET ultimo_login = now() WHERE id = $1', [dev.id]);
+      registrar({ id: dev.id, nome: dev.nome }, 'Entrou no painel', 'acesso', null, req.ip);
       const token = jwt.sign({ sub: String(dev.id), tipo: 'dev', nome: dev.nome }, process.env.JWT_SECRET, { expiresIn: '4h' });
       res.json({ token, dev: { id: dev.id, nome: dev.nome, email: dev.email } });
     } catch (err) {
@@ -150,6 +230,12 @@ router.post(
 
 // Daqui para baixo, só com login do painel
 router.use(autenticarDev);
+
+// Histórico: toda alteração feita no painel (POST/PUT/DELETE que deu certo) fica registrada
+router.use(registrarAcao);
+
+// Equipe, usuários das empresas, histórico e lixeira
+router.use(require('./devEquipe.routes'));
 
 // Cobrança da mensalidade (faturas com PIX)
 router.use('/cobranca', require('./devCobranca.routes'));

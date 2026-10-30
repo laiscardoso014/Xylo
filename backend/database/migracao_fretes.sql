@@ -15,6 +15,9 @@
 --    & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d db_woodcontrol -f database/migracao_fretes.sql
 -- =====================================================================
 
+-- O arquivo está em UTF-8 (acentos): no Windows o psql lê em WIN1252 se não avisar
+SET client_encoding = 'UTF8';
+
 BEGIN;
 
 DO $$

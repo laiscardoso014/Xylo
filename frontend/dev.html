@@ -9,7 +9,7 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/main.css">
     <script src="js/tema.js"></script>
     <link rel="stylesheet" href="css/dev.css">
@@ -20,27 +20,35 @@
          LOGIN DO PAINEL (aparece quando não há sessão)
     ========================================================== -->
     <section class="dev-login" id="tela-login" hidden>
-        <form class="card" id="form-login-dev" novalidate>
-            <div class="logo-icone"><i class="fas fa-code"></i></div>
-            <h1>Painel do Desenvolvedor</h1>
-            <p>Acesso restrito à equipe da CTech.</p>
+        <div class="dev-login-caixa">
+            <div class="dev-login-marca">
+                <svg class="xylo-marca" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false"><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" transform="rotate(45 12 12)"/><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" opacity=".72" transform="rotate(-45 12 12)"/><circle cx="12" cy="12" r="1.5" fill="#3fae74"/></svg>
+                <span>Xylo</span>
+                <span class="selo-interno">Equipe CTech</span>
+            </div>
+            <form class="dev-login-cartao" id="form-login-dev" novalidate>
+                <h1>Painel do desenvolvedor</h1>
+                <p>Empresas, solicitações de acesso e cobrança da mensalidade. Acesso só da equipe da CTech.</p>
 
-            <div class="grade-campos">
                 <div class="campo">
                     <label for="dev-email">E-mail</label>
-                    <input type="email" id="dev-email" name="email" autocomplete="username" required>
+                    <input type="email" id="dev-email" name="email" autocomplete="username" placeholder="voce@ctech.com.br" required>
                 </div>
                 <div class="campo">
                     <label for="dev-senha">Senha</label>
-                    <input type="password" id="dev-senha" name="senha" autocomplete="current-password" required>
+                    <div class="senha-com-botao">
+                        <input type="password" id="dev-senha" name="senha" autocomplete="current-password" required>
+                        <button type="button" class="icone-botao" id="dev-ver-senha" aria-label="Mostrar senha"><i class="fas fa-eye"></i></button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="form-erro" id="dev-erro" hidden></div>
-            <button type="submit" class="btn btn-primario" id="btn-entrar-dev">
-                <i class="fas fa-right-to-bracket"></i> Entrar no painel
-            </button>
-        </form>
+                <div class="form-erro" id="dev-erro" hidden></div>
+                <button type="submit" class="btn btn-primario" id="btn-entrar-dev">
+                    <i class="fas fa-right-to-bracket"></i> Entrar no painel
+                </button>
+            </form>
+            <a class="dev-login-voltar" href="login.html"><i class="fas fa-arrow-left"></i> Login das empresas</a>
+        </div>
     </section>
 
     <!-- =========================================================
@@ -50,16 +58,22 @@
 
         <aside class="menu" id="menu">
             <div class="menu-topo" data-recarregar title="Recarregar a página">
-                <div class="logo-icone"><svg class="xylo-marca" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" transform="rotate(45 12 12)"/><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" opacity=".72" transform="rotate(-45 12 12)"/><circle cx="12" cy="12" r="1.5" fill="#15803d"/></svg></div>
+                <div class="logo-icone"><svg class="xylo-marca" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" transform="rotate(45 12 12)"/><rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="currentColor" opacity=".72" transform="rotate(-45 12 12)"/><circle cx="12" cy="12" r="1.5" fill="#3fae74"/></svg></div>
                 <span class="logo-texto">Xylo</span>
+                <span class="selo-interno">Equipe</span>
             </div>
 
             <nav class="menu-itens">
-                <div class="menu-titulo">Painel do desenvolvedor</div>
+                <div class="menu-titulo">Gestão</div>
                 <a href="#inicio" data-rota="inicio"><i class="fas fa-gauge"></i> Visão geral</a>
                 <a href="#solicitacoes" data-rota="solicitacoes"><i class="fas fa-inbox"></i> Solicitações <span class="badge" id="badge-pendentes"></span></a>
                 <a href="#empresas" data-rota="empresas"><i class="fas fa-building"></i> Empresas</a>
                 <a href="#cobranca" data-rota="cobranca"><i class="fas fa-receipt"></i> Cobrança <span class="badge" id="badge-cobranca"></span></a>
+
+                <div class="menu-titulo">Administração</div>
+                <a href="#usuarios" data-rota="usuarios"><i class="fas fa-users-gear"></i> Usuários</a>
+                <a href="#historico" data-rota="historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a>
+                <a href="#lixeira" data-rota="lixeira"><i class="fas fa-trash-can"></i> Lixeira</a>
 
                 <div class="menu-titulo">Links</div>
                 <a href="index.html" target="_blank" rel="noopener"><i class="fas fa-globe"></i> Página de venda</a>
@@ -77,12 +91,15 @@
 
                 <div class="topo-direita">
                     <div class="aparencia" id="aparencia"></div>
-                    <div class="quem">
-                        <strong id="info-dev"></strong>
-                        <span>Desenvolvedor</span>
+                    <div class="quem-dev">
+                        <span class="avatar" id="avatar-dev" aria-hidden="true"></span>
+                        <div class="quem">
+                            <strong id="info-dev"></strong>
+                            <span>Equipe CTech</span>
+                        </div>
                     </div>
-                    <button type="button" class="btn btn-secundario pequeno" id="btn-sair">
-                        <i class="fas fa-right-from-bracket"></i> <span class="some-mobile">Sair</span>
+                    <button type="button" class="icone-botao" id="btn-sair" title="Sair do painel" aria-label="Sair do painel">
+                        <i class="fas fa-right-from-bracket"></i>
                     </button>
                 </div>
             </header>
@@ -108,7 +125,9 @@
 
     <!-- Funções compartilhadas: carregar antes dos outros scripts -->
     <script src="js/comum.js"></script>
-    <script src="js/devCobranca.js"></script>  <!-- antes do dev.js: o dev.js já abre a tela da URL -->
+    <script src="js/tabelas.js"></script>
+    <script src="js/devCobranca.js"></script>
+    <script src="js/devEquipe.js"></script>  <!-- antes do dev.js: o dev.js já abre a tela da URL -->
     <script src="js/dev.js"></script>
 </body>
 </html>

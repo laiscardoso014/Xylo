@@ -131,6 +131,14 @@ function mostrarLogin(mensagem) {
   $('#dev-email').focus();
 }
 
+$('#dev-ver-senha').addEventListener('click', () => {
+  const campo = $('#dev-senha');
+  const mostrar = campo.type === 'password';
+  campo.type = mostrar ? 'text' : 'password';
+  $('#dev-ver-senha').setAttribute('aria-label', mostrar ? 'Esconder senha' : 'Mostrar senha');
+  $('#dev-ver-senha').innerHTML = `<i class="fas ${mostrar ? 'fa-eye-slash' : 'fa-eye'}"></i>`;
+});
+
 $('#form-login-dev').addEventListener('submit', async (e) => {
   e.preventDefault();
   const botao = $('#btn-entrar-dev');
@@ -168,6 +176,9 @@ const TELAS = {
   solicitacoes: { titulo: 'Solicitações', desenhar: telaSolicitacoes },
   empresas: { titulo: 'Empresas', desenhar: telaEmpresas },
   cobranca: { titulo: 'Cobrança · mensalidades', desenhar: () => telaCobranca() }, // js/devCobranca.js
+  usuarios: { titulo: 'Usuários', desenhar: telaUsuarios },       // js/devEquipe.js
+  historico: { titulo: 'Histórico do painel', desenhar: telaHistorico },
+  lixeira: { titulo: 'Lixeira', desenhar: telaLixeira },
 };
 
 function navegar() {
@@ -199,7 +210,9 @@ async function atualizarBadge() {
 function iniciarPainel() {
   $('#tela-login').hidden = true;
   $('#tela-painel').hidden = false;
-  $('#info-dev').textContent = SessaoDev.dev().nome || '';
+  const nomeDev = SessaoDev.dev().nome || '';
+  $('#info-dev').textContent = nomeDev;
+  $('#avatar-dev').textContent = (nomeDev.trim()[0] || 'C').toUpperCase();
   atualizarBadge();
   navegar();
 }
@@ -214,27 +227,45 @@ async function telaInicio() {
     conteudo.innerHTML = '<div class="aviso-erro">Não foi possível carregar o resumo.</div>';
     return;
   }
-  const cartao = (icone, valor, texto, link) => `
-    <a class="card cartao" href="${link}" style="text-decoration:none">
-      <div class="cartao-icone"><i class="fas ${icone}"></i></div>
-      <div><strong>${valor}</strong><span>${texto}</span></div>
-    </a>`;
+  const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+  // O que pede uma ação agora (só aparece o que tem)
+  const pendencias = [
+    r.pendentes && { icone: 'fa-inbox', texto: `${plural(r.pendentes, 'solicitação de acesso', 'solicitações de acesso')} esperando resposta`, link: '#solicitacoes', acao: 'Responder' },
+    r.pagamentos_informados && { icone: 'fa-bell', texto: `${plural(r.pagamentos_informados, 'empresa avisou', 'empresas avisaram')} que pagou: confira no banco e dê baixa`, link: '#cobranca', acao: 'Conferir' },
+    r.faturas_vencidas && { icone: 'fa-triangle-exclamation', texto: `${plural(r.faturas_vencidas, 'fatura vencida', 'faturas vencidas')}`, link: '#cobranca', acao: 'Ver faturas', grave: true },
+    r.em_contato && { icone: 'fa-phone', texto: `${plural(r.em_contato, 'solicitação', 'solicitações')} em contato (demonstração em andamento)`, link: '#solicitacoes', acao: 'Abrir' },
+  ].filter(Boolean);
+  const numero = (rotulo, valor, link, sub = '') => `
+    <a class="card kpi" href="${link}"><span class="kpi-rotulo">${rotulo}</span><strong>${valor}</strong>${sub ? `<span class="sub">${sub}</span>` : ''}</a>`;
+  const hora = new Date().getHours();
+  const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
   conteudo.innerHTML = `
-    <div class="card">
-      <h2>Olá, ${esc(SessaoDev.dev().nome)}!</h2>
-      <p>${r.pendentes
-        ? `Você tem <strong>${r.pendentes}</strong> solicitação(ões) esperando resposta.`
-        : 'Nenhuma solicitação pendente no momento.'}</p>
+    <div class="dev-cabeca">
+      <div>
+        <h2>${saudacao}, ${esc((SessaoDev.dev().nome || '').split(' ')[0])}</h2>
+        <p>${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+      </div>
     </div>
-    <div class="cartoes">
-      ${cartao('fa-inbox', r.pendentes, 'Solicitações pendentes', '#solicitacoes')}
-      ${cartao('fa-phone', r.em_contato, 'Em contato', '#solicitacoes')}
-      ${cartao('fa-building', r.empresas_ativas, 'Empresas ativas', '#empresas')}
-      ${cartao('fa-lock', r.empresas_bloqueadas, 'Empresas bloqueadas', '#empresas')}
-      ${cartao('fa-users', r.usuarios_ativos, 'Usuários ativos', '#empresas')}
-      ${cartao('fa-sack-dollar', esc(formatarMoeda(r.recebido_mes || 0)), 'Recebido no mês', '#cobranca')}
-      ${cartao('fa-triangle-exclamation', r.faturas_vencidas || 0, 'Faturas vencidas', '#cobranca')}
-      ${cartao('fa-bell', r.pagamentos_informados || 0, 'Pagamentos para confirmar', '#cobranca')}
+
+    <section class="card dev-atencao" aria-labelledby="t-atencao">
+      <h3 id="t-atencao">Precisa da sua atenção</h3>
+      ${pendencias.length ? `<ul class="lista-atencao">${pendencias.map((p) => `
+        <li class="${p.grave ? 'grave' : ''}"><i class="fas ${p.icone}" aria-hidden="true"></i><span>${p.texto}</span>
+          <a class="btn btn-secundario pequeno" href="${p.link}">${p.acao}</a></li>`).join('')}</ul>`
+        : '<p class="tudo-em-dia"><i class="fas fa-circle-check" aria-hidden="true"></i> Tudo em dia: nenhuma solicitação nem cobrança pendente.</p>'}
+    </section>
+
+    <h3 class="dev-grupo">Clientes</h3>
+    <div class="cartoes cartoes-kpi">
+      ${numero('Empresas ativas', r.empresas_ativas, '#empresas')}
+      ${numero('Empresas bloqueadas', r.empresas_bloqueadas, '#empresas')}
+      ${numero('Usuários ativos', r.usuarios_ativos, '#empresas', 'em todas as empresas')}
+    </div>
+    <h3 class="dev-grupo">Mensalidade</h3>
+    <div class="cartoes cartoes-kpi">
+      ${numero('Recebido no mês', esc(formatarMoeda(r.recebido_mes || 0)), '#cobranca')}
+      ${numero('Faturas vencidas', r.faturas_vencidas || 0, '#cobranca')}
+      ${numero('Pagamentos para confirmar', r.pagamentos_informados || 0, '#cobranca')}
     </div>`;
 }
 
@@ -294,7 +325,8 @@ async function telaSolicitacoes() {
                   ${s.empresa_criada ? `<div class="sub">→ ${esc(s.empresa_criada)}</div>` : ''}</td>
               <td class="acoes">
                 <button type="button" class="icone-botao" data-ver="${s.id}" title="Ver detalhes"><i class="fas fa-eye"></i></button>
-                ${s.status !== 'Aprovada' ? `<button type="button" class="btn btn-primario pequeno" data-aprovar="${s.id}"><i class="fas fa-check"></i> Aprovar</button>` : ''}
+                ${s.status !== 'Aprovada' ? `<button type="button" class="btn btn-primario pequeno" data-aprovar="${s.id}"><i class="fas fa-check"></i> Aprovar</button>
+                  <button type="button" class="icone-botao perigo" data-excluir-sol="${s.id}" title="Excluir (vai para a lixeira)"><i class="fas fa-trash-can"></i></button>` : ''}
               </td>
             </tr>`).join('')}
         </tbody>
@@ -344,6 +376,27 @@ async function telaSolicitacoes() {
     });
   }
 
+  function excluir(s) {
+    abrirModal('Excluir solicitação', `
+      <p>A solicitação de <strong>${esc(s.nome_empresa)}</strong> (${esc(s.nome_completo)}) vai para a <strong>Lixeira</strong>, de onde pode ser restaurada.</p>
+      <form novalidate>
+        <div class="grade-campos"><div class="campo larga"><label>Motivo</label>
+          <input name="motivo" maxlength="200" list="motivos-exclusao" placeholder="Ex.: teste, spam, duplicada">
+          <datalist id="motivos-exclusao"><option value="Teste"><option value="Spam"><option value="Duplicada"><option value="Desistiu"></datalist></div></div>
+        <div class="form-erro" hidden></div>
+        <div class="modal-rodape">
+          <button type="button" class="btn btn-secundario" data-cancelar>Cancelar</button>
+          <button type="submit" class="btn btn-perigo"><i class="fas fa-trash-can"></i> Excluir</button>
+        </div>
+      </form>`);
+    ligarFormulario(async (dados) => {
+      await api(`/solicitacoes/${s.id}`, { metodo: 'DELETE', corpo: dados });
+      toast('Solicitação na lixeira.');
+      atualizarBadge();
+      carregar();
+    });
+  }
+
   function aprovar(s) {
     abrirModal('Aprovar e criar empresa', `
       <p>Confira os dados. Ao confirmar, o sistema cria a empresa e o usuário <strong>Administrador</strong> dela
@@ -385,6 +438,7 @@ async function telaSolicitacoes() {
     const achar = (id) => lista.find((s) => s.id === Number(id));
     if (alvo.dataset.ver) verDetalhes(achar(alvo.dataset.ver));
     if (alvo.dataset.aprovar) aprovar(achar(alvo.dataset.aprovar));
+    if (alvo.dataset.excluirSol) excluir(achar(alvo.dataset.excluirSol));
   };
 
   carregar();

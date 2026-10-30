@@ -76,6 +76,7 @@ async function calcularComissao(empresaId, funcionario, competencia) {
       ticket: c.ticket, toneladas, km, km_origem: c.km_carga !== null ? 'carga' : c.km_rota !== null ? 'rota' : null,
       km_rota: num(c.km_rota), faixa: null, valor_tonelada: null, valor: 0, pendencia: null,
     };
+    if (!faixas.length) return item; // motorista sem comissão por tonelada: a carga não gera comissão
     if (km === null) { item.pendencia = 'sem_km'; return item; }
     const f = faixaDoKm(faixas, km);
     if (!f) { item.pendencia = 'sem_faixa'; return item; }
@@ -89,7 +90,8 @@ async function calcularComissao(empresaId, funcionario, competencia) {
     toneladas: r2(cargas.reduce((t, c) => t + c.toneladas, 0)),
     cargas,
     sem_km: cargas.filter((c) => c.pendencia === 'sem_km').length,
-    sem_faixa: cargas.some((c) => c.pendencia === 'sem_faixa') || (cargas.length > 0 && !faixas.length),
+    sem_faixa: cargas.some((c) => c.pendencia === 'sem_faixa'),
+    sem_comissao: !faixas.length,
     faixas: ordenarFaixas(faixas).map((f) => ({ ...f, texto: textoFaixa(faixas, f) })),
     motorista: true,
   };

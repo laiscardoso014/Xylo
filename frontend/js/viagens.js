@@ -97,7 +97,7 @@ async function telaViagens() {
         <tbody>
           ${lista.map((v) => `
             <tr class="${v.status === 'Cancelada' ? 'inativo' : ''}">
-              <td><strong>Nº ${esc(v.numero_viagem)}</strong><div class="sub">${formatarDataISO(v.data)}${v.hora_pesagem ? ` · ${esc(v.hora_pesagem)}` : ''}</div></td>
+              <td data-ordem="${esc(v.data)} ${String(v.hora_pesagem || '').padStart(5, '0')} ${String(v.numero_viagem).padStart(6, '0')}"><strong>Nº ${esc(v.numero_viagem)}</strong><div class="sub">${formatarDataISO(v.data)}${v.hora_pesagem ? ` · ${esc(v.hora_pesagem)}` : ''}</div></td>
               <td>${esc(v.cliente)}</td>
               <td>${esc(v.floresta)}<div class="sub">${esc(v.empreiteiro) || 'sem empreiteiro'}</div></td>
               <td>${esc(v.classe)}</td>
@@ -153,7 +153,8 @@ async function telaViagens() {
           ${select('empreiteiro_id', 'Empreiteiro', comAtual(opcoes.empreiteiros, v.empreiteiro_id, v.empreiteiro), v.empreiteiro_id, false, 'Sem empreiteiro')}
           ${select('classe_id', 'Classe', opcoes.classes, v.classe_id)}
           <div class="campo"><label>Ticket</label><input name="ticket" maxlength="30" value="${esc(v.ticket)}"></div>
-          <div class="campo"><label>Placa</label><input name="placa" maxlength="20" value="${esc(v.placa)}" placeholder="ABC1D23"></div>
+          <div class="campo"><label>Placa</label><input name="placa" maxlength="20" value="${esc(v.placa)}" placeholder="ABC1D23">
+            <small id="aviso-placa" aria-live="polite">Pela placa o sistema escolhe o motorista.</small></div>
           ${campoMotorista(opcoes.motoristas || [], v.motorista_id, v.motorista, { podeCadastrar: PERFIL.podeEditar })}
           <div class="campo"><label>Horário da pesagem</label><input name="hora_pesagem" type="time" value="${esc(v.hora_pesagem)}"></div>
           <div class="campo"><label>Peso líquido (t) *</label><input name="peso_liquido" required inputmode="decimal" placeholder="Ex.: 46,79"
@@ -186,6 +187,50 @@ async function telaViagens() {
     if (leitura) marcarLidos(form, leitura, ['cliente_id', 'floresta_id', 'classe_id', 'motorista_id', 'peso_liquido', 'data']);
 
     const numero = (n) => { const x = lerNumero(campo(n).value); return Number.isFinite(x) ? x : null; };
+
+    // ---- Placa <-> motorista: cada motorista dirige sempre o mesmo caminhão ----
+    // O motorista pode ter trocado de caminhão: vale a placa que ele usava NA DATA da carga
+    const placaDe = (txt) => String(txt || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const dataCarga = () => campo('data').value || hojeISO();
+    const placasDo = (m) => (m.placas && m.placas.length ? m.placas : m.placa ? [{ placa: m.placa }] : []);
+    const vale = (p, d) => (!p.desde || d >= p.desde) && (!p.ate || d <= p.ate);
+    const placaNaData = (m, d) => (placasDo(m).find((p) => vale(p, d)) || {}).placa || null;
+    const donoNaData = (placa, d) => (opcoes.motoristas || []).find((m) => placasDo(m).some((p) => p.placa === placa && vale(p, d)));
+    const motoristaEscolhido = () => (opcoes.motoristas || []).find((m) => String(m.id) === campo('motorista_id').value);
+    function conferirPlaca() {
+      const placa = placaDe(campo('placa').value);
+      const m = motoristaEscolhido();
+      const doMotorista = m && placaNaData(m, dataCarga());
+      const aviso = $('#aviso-placa');
+      aviso.classList.remove('alerta');
+      if (placa && doMotorista && placa !== doMotorista) {
+        const dono = donoNaData(placa, dataCarga());
+        aviso.textContent = dono
+          ? `Nesta data a placa é de ${dono.funcionario || dono.nome}, não do motorista escolhido.`
+          : `Nesta data o motorista escolhido usava a placa ${doMotorista}.`;
+        aviso.classList.add('alerta');
+      } else {
+        aviso.textContent = 'Pela placa o sistema escolhe o motorista.';
+      }
+    }
+    function escolherPelaPlaca() {
+      const placa = placaDe(campo('placa').value);
+      const dono = placa && donoNaData(placa, dataCarga());
+      if (dono && String(dono.id) !== campo('motorista_id').value) {
+        campo('motorista_id').value = String(dono.id);
+        toast(`Motorista: ${dono.funcionario || dono.nome} (placa ${placa} nesta data).`);
+      }
+      conferirPlaca();
+    }
+    campo('placa').addEventListener('change', escolherPelaPlaca);
+    campo('data').addEventListener('change', escolherPelaPlaca);
+    campo('motorista_id').addEventListener('change', () => {
+      const m = motoristaEscolhido();
+      const p = m && placaNaData(m, dataCarga());
+      if (p && !campo('placa').value.trim()) campo('placa').value = p;
+      conferirPlaca();
+    });
+    conferirPlaca();
 
     function atualizarTotal() {
       const peso = numero('peso_liquido');

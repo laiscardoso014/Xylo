@@ -63,7 +63,7 @@ const FERRAMENTAS = {
 
   // -------------------------------------------------------------------
   relatorio: {
-    descricao: 'Relatório de um mês agrupado por cliente (serraria), floresta, empreiteiro ou classe de madeira. Floresta traz quanto há a pagar, quanto foi pago e o saldo; empreiteiro traz produção, adiantamentos e líquido a pagar.',
+    descricao: 'Relatório de um mês agrupado por cliente (serraria), floresta, empreiteiro ou classe de madeira. Cliente traz a madeira (viagens) e os fretes separados e somados. Floresta traz quanto há a pagar, quanto foi pago e o saldo; empreiteiro traz produção, adiantamentos e líquido a pagar.',
     parametros: {
       tipo: { type: 'string', enum: ['cliente', 'floresta', 'empreiteiro', 'classe'], description: 'Como agrupar' },
       mes: MES,
@@ -73,8 +73,16 @@ const FERRAMENTAS = {
       exigirMes(mes);
       const p = [empresaId, mes];
       const sql = {
-        cliente: `SELECT cliente AS nome, qtd_viagens::int AS viagens, toneladas, valor_total FROM vw_relatorio_cliente
-                   WHERE empresa_id=$1 AND mes=$2 ORDER BY valor_total DESC`,
+        cliente: `SELECT c.nome, COALESCE(r.qtd_viagens,0)::int AS viagens, COALESCE(r.toneladas,0) AS toneladas_madeira,
+                         COALESCE(r.valor_total,0) AS valor_madeira, COALESCE(f.qtd,0)::int AS fretes,
+                         COALESCE(f.toneladas,0) AS toneladas_fretes, COALESCE(f.valor,0) AS valor_fretes,
+                         COALESCE(r.valor_total,0) + COALESCE(f.valor,0) AS valor_total
+                    FROM (SELECT * FROM vw_relatorio_cliente WHERE empresa_id=$1 AND mes=$2) r
+                    FULL JOIN (SELECT cliente_id, COUNT(*) AS qtd, SUM(toneladas) AS toneladas, SUM(valor_total) AS valor FROM fretes
+                                WHERE empresa_id=$1 AND to_char(data,'YYYY-MM')=$2 AND status_pagamento<>'Cancelado'
+                                GROUP BY cliente_id) f ON f.cliente_id = r.cliente_id
+                    JOIN clientes c ON c.id = COALESCE(r.cliente_id, f.cliente_id)
+                   ORDER BY valor_total DESC`,
         floresta: `SELECT f.nome, COALESCE(r.qtd_viagens,0)::int AS viagens, COALESCE(r.toneladas,0) AS toneladas,
                           COALESCE(r.valor_a_pagar_floresta,0) AS a_pagar, COALESCE(pg.pago,0) AS pago_no_mes,
                           COALESCE(r.valor_a_pagar_floresta,0) - COALESCE(pg.pago,0) AS saldo
@@ -135,6 +143,54 @@ const FERRAMENTAS = {
         valor_total: rows.length ? n(rows[0].valor_total_geral) : 0,
         viagens: rows.map(({ total_encontrado: _a, toneladas_total: _b, valor_total_geral: _c, ...v }) => ({
           ...v, peso_liquido: n(v.peso_liquido), valor_tonelada: n(v.valor_tonelada), valor_total: n(v.valor_total),
+        })),
+      };
+    },
+  },
+
+  // -------------------------------------------------------------------
+  buscar_fretes: {
+    descricao: 'Procura FRETES (transportes cobrados à parte, separados das viagens de madeira) por mês, cliente, destino, motorista, nº da carga ou situação do pagamento (Pendente/Pago). Nomes aceitam parte do texto. Devolve no máximo 30 fretes, o total encontrado, as toneladas e o valor. Use sempre que perguntarem por fretes ou cargas de um cliente (junto com buscar_viagens).',
+    parametros: {
+      mes: MES,
+      cliente: { type: 'string' },
+      destino: { type: 'string' },
+      motorista: { type: 'string' },
+      numero_carga: { type: 'string' },
+      situacao: { type: 'string', enum: ['Pendente', 'Pago', 'Cancelado'] },
+    },
+    obrigatorios: [],
+    async executar(empresaId, f) {
+      if (f.mes) exigirMes(f.mes);
+      const filtros = ['fr.empresa_id = $1'];
+      const valores = [empresaId];
+      const add = (sql, valor) => { valores.push(valor); filtros.push(sql.replace('?', `$${valores.length}`)); };
+      if (f.situacao) add('fr.status_pagamento = ?', f.situacao); else filtros.push("fr.status_pagamento <> 'Cancelado'");
+      if (f.mes) add("to_char(fr.data,'YYYY-MM') = ?", f.mes);
+      if (f.cliente) add('c.nome ILIKE ?', `%${f.cliente}%`);
+      if (f.destino) add('fr.destino ILIKE ?', `%${f.destino}%`);
+      if (f.motorista) add('(m.nome ILIKE ? OR fu.nome ILIKE $X)'.replace('$X', `$${valores.length + 1}`), `%${f.motorista}%`);
+      if (f.numero_carga) add('fr.numero_carga = ?', String(f.numero_carga).trim());
+      const { rows } = await query(
+        `SELECT fr.numero_carga, to_char(fr.data,'YYYY-MM-DD') AS data, c.nome AS cliente, fr.destino, fr.toneladas,
+                fr.valor_tonelada, fr.valor_fechado, fr.valor_total, fr.status_pagamento AS situacao, fr.forma_pagamento,
+                to_char(fr.data_pagamento,'YYYY-MM-DD') AS data_pagamento, COALESCE(fu.nome, m.nome) AS motorista,
+                COUNT(*) OVER() AS total_encontrado, SUM(fr.toneladas) OVER() AS toneladas_total, SUM(fr.valor_total) OVER() AS valor_total_geral,
+                SUM(CASE WHEN fr.status_pagamento = 'Pendente' THEN fr.valor_total ELSE 0 END) OVER() AS a_receber
+           FROM fretes fr JOIN clientes c ON c.id = fr.cliente_id
+           LEFT JOIN motoristas m ON m.id = fr.motorista_id
+           LEFT JOIN funcionarios fu ON fu.motorista_id = m.id
+          WHERE ${filtros.join(' AND ')}
+          ORDER BY fr.data DESC, fr.id DESC LIMIT 30`, valores);
+      const r0 = rows[0] || {};
+      return {
+        total_encontrado: rows.length ? Number(r0.total_encontrado) : 0,
+        toneladas_total: n(r0.toneladas_total),
+        valor_total: n(r0.valor_total_geral),
+        a_receber: n(r0.a_receber),
+        fretes: rows.map(({ total_encontrado: _a, toneladas_total: _b, valor_total_geral: _c, a_receber: _d, ...x }) => ({
+          ...x, toneladas: n(x.toneladas), valor_tonelada: x.valor_tonelada === null ? null : n(x.valor_tonelada),
+          valor_fechado: x.valor_fechado === null ? null : n(x.valor_fechado), valor_total: n(x.valor_total),
         })),
       };
     },
@@ -219,16 +275,31 @@ const FERRAMENTAS = {
   },
 };
 
-// Formato que a API do Claude espera
-const definicoesParaIA = () => Object.entries(FERRAMENTAS).map(([nome, f]) => ({
+// Pessoal, despesas, cadastros, DRE e administração (ferramentasExtras.js)
+Object.assign(FERRAMENTAS, require('./ferramentasExtras').EXTRAS);
+
+// Quem pode usar cada ferramenta: o mesmo perfil que vê a tela correspondente
+//   sem "acesso" ou 'todos' -> qualquer perfil
+//   'editar' -> Administrador e Financeiro (salários, folha, adiantamentos)
+//   'admin'  -> só Administrador (usuários, histórico, mensalidade)
+function podeUsar(f, perfil) {
+  const acesso = f.acesso || 'todos';
+  if (acesso === 'todos') return true;
+  if (acesso === 'editar') return perfil === 'Administrador' || perfil === 'Financeiro';
+  return perfil === 'Administrador';
+}
+
+// Formato que a API da IA espera (só as ferramentas que o perfil pode usar)
+const definicoesParaIA = (perfil) => Object.entries(FERRAMENTAS).filter(([, f]) => podeUsar(f, perfil)).map(([nome, f]) => ({
   name: nome,
   description: f.descricao,
   input_schema: { type: 'object', properties: f.parametros, required: f.obrigatorios },
 }));
 
-async function executarFerramenta(empresaId, nome, entrada) {
+async function executarFerramenta(empresaId, nome, entrada, perfil) {
   const f = FERRAMENTAS[nome];
   if (!f) throw new Error(`Ferramenta desconhecida: ${nome}`);
+  if (!podeUsar(f, perfil)) throw new Error('O seu perfil não tem acesso a esta informação.');
   return f.executar(empresaId, entrada || {});
 }
 

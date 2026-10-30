@@ -493,11 +493,12 @@ document.querySelectorAll('[data-recarregar]').forEach((el) => {
 function campoMotorista(lista, atualId, atualNome, { podeCadastrar = false } = {}) {
   const itens = [...lista];
   if (atualId && !itens.some((m) => m.id === Number(atualId))) itens.push({ id: Number(atualId), nome: `${atualNome || 'Motorista'} (não cadastrado)` });
-  const rotulo = (m) => (m.funcionario && m.funcionario.toLowerCase() !== m.nome.toLowerCase() ? `${m.nome} — ${m.funcionario}` : m.nome);
+  const rotulo = (m) => (m.funcionario && m.funcionario.toLowerCase() !== m.nome.toLowerCase() ? `${m.nome} — ${m.funcionario}` : m.nome)
+    + (m.placa ? ` · ${m.placa}` : '');
   return `<div class="campo"><label>Motorista *</label>
     <select name="motorista_id" required>
       <option value="">${itens.length ? 'Selecione…' : 'Nenhum motorista cadastrado'}</option>
-      ${itens.map((m) => `<option value="${m.id}" ${Number(atualId) === m.id ? 'selected' : ''}>${esc(rotulo(m))}</option>`).join('')}
+      ${itens.map((m) => `<option value="${m.id}" data-placa="${esc(m.placa || '')}" ${Number(atualId) === m.id ? 'selected' : ''}>${esc(rotulo(m))}</option>`).join('')}
     </select>
     <small>Não está na lista? ${podeCadastrar ? 'Cadastre em <a href="#funcionarios">Pessoal › Funcionários</a>' : 'Peça para cadastrar em Pessoal › Funcionários'} (marque "É motorista").</small></div>`;
 }

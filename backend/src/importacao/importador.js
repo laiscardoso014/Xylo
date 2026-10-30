@@ -22,7 +22,7 @@
 const { query, pool } = require('../config/db');
 const { lerNumero } = require('../utils/numeros');
 const { documentoValido, telefoneValido } = require('../utils/documentos');
-const { idDoMotorista, motoristasCadastrados } = require('../utils/motoristas');
+const { idDoMotorista, motoristasCadastrados, placaValida, donoDaPlaca } = require('../utils/motoristas');
 
 const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[º°ª]/g, '').replace(/[^a-z0-9$/ ]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -291,6 +291,7 @@ async function analisarViagens(empresaId, brutas, opcoes) {
     mapaMotoristas.set(chaveNome(m.nome), { id: m.id, nome: m.nome, ativo: true });
   });
   const mapas = { cliente: indice(cli.rows), floresta: indice(flo.rows), empreiteiro: indice(emp.rows), motorista: mapaMotoristas };
+  // placa -> motorista: quem usava a placa na data da carga (motorista_placas)
   const clienteFixo = opcoes.clienteFixo ? cli.rows.find((c) => c.id === Number(opcoes.clienteFixo)) : null;
   const novos = { cliente: new Map(), floresta: new Map(), empreiteiro: new Map(), motorista: new Map() };
 
@@ -310,6 +311,7 @@ async function analisarViagens(empresaId, brutas, opcoes) {
     });
   }
   const noArquivo = { tickets: new Set(), chaves: new Set() };
+  const novosComPlaca = new Map(); // motorista novo -> 1ª placa dele na planilha (vai para o cadastro)
 
   const resolver = (tipo, nome, erros, avisos, obrigatorio) => {
     if (vazio(nome)) { if (obrigatorio) erros.push(`Falta ${tipo}.`); return null; }
@@ -358,8 +360,25 @@ async function analisarViagens(empresaId, brutas, opcoes) {
     }
     // Motorista: tem que estar cadastrado (ou ser criado como funcionário, com "criar cadastros").
     // Planilha antiga sem motorista na linha: importa sem (só a importação aceita).
-    const motoristaRef = vazio(v.motorista) ? null : resolver('motorista', paraTexto(v.motorista), erros, avisos, false);
-    if (vazio(v.motorista)) avisos.push('Sem motorista na planilha: importada sem motorista.');
+    // Pela PLACA primeiro: na planilha pode vir só o 1º nome ou apelido.
+    const placa = paraTexto(v.placa) ? paraTexto(v.placa).toUpperCase().replace(/[^A-Z0-9]/g, '') : null;
+    const dono = placa ? donoDaPlaca(mot, placa, data) : null;
+    let motoristaRef = null;
+    if (dono) {
+      motoristaRef = { id: dono.id, nome: dono.nome };
+      const escrito = paraTexto(v.motorista);
+      const doNome = escrito ? mapaMotoristas.get(chaveNome(escrito)) : null;
+      if (escrito && doNome && doNome.id !== dono.id) {
+        avisos.push(`Na planilha o motorista é "${escrito}", mas a placa ${placa} é de ${dono.funcionario || dono.nome}: importada como ${dono.nome}.`);
+      }
+    } else {
+      motoristaRef = vazio(v.motorista) ? null : resolver('motorista', paraTexto(v.motorista), erros, avisos, false);
+      if (motoristaRef && motoristaRef.novo) {
+        if (placa && !novosComPlaca.has(motoristaRef.novo)) novosComPlaca.set(motoristaRef.novo, placa);
+        motoristaRef.placa = novosComPlaca.get(motoristaRef.novo) || null;
+      }
+      if (vazio(v.motorista)) avisos.push('Sem motorista na planilha: importada sem motorista.');
+    }
     const classe = acharClasse(v.classe, cla.rows);
     if (classe && ['lixo', 'fina', 'media', 'grossa', 'eucal'].filter((k) => norm(v.classe).includes(k)).length > 1) {
       avisos.push(`Classe "${v.classe}" cita mais de uma: importada como ${classe.nome}.`);
@@ -367,7 +386,6 @@ async function analisarViagens(empresaId, brutas, opcoes) {
     if (!classe) erros.push(vazio(v.classe) ? 'Falta a classe.' : `Classe "${v.classe}" não reconhecida (use Lixo, Fina, Média, Grossa ou Eucalipto).`);
 
     const ticket = paraTexto(v.ticket);
-    const placa = paraTexto(v.placa) ? paraTexto(v.placa).toUpperCase().replace(/[^A-Z0-9]/g, '') : null;
     let valorTon = opcoes.usarValorDaPlanilha ? paraNumero(v.valor_tonelada) : NaN;
     if (!Number.isFinite(valorTon) || valorTon <= 0) valorTon = null;
     const totalPlanilha = paraNumero(v.valor_total);
@@ -651,12 +669,24 @@ async function gravar(empresaId, usuarioId, analise, origem) {
         if (ref && ref.novo && !ids.motorista.has(ref.novo)) {
           const executar = (sql, p) => cliente.query(sql, p);
           const motoristaId = await idDoMotorista(executar, empresaId, ref.nome);
+          // a placa da 1ª carga dele na planilha (se nenhum outro motorista já tem)
+          if (ref.placa && placaValida(ref.placa)) {
+            await cliente.query(
+              `UPDATE motoristas m SET placa = $1 WHERE m.id = $2 AND m.placa IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM motoristas o WHERE o.empresa_id = m.empresa_id AND o.placa = $1 AND o.id <> m.id)`,
+              [ref.placa, motoristaId]);
+            await cliente.query(
+              `INSERT INTO motorista_placas (empresa_id, motorista_id, placa)
+               SELECT $1, m.id, m.placa FROM motoristas m
+                WHERE m.id = $2 AND m.placa IS NOT NULL AND NOT EXISTS (SELECT 1 FROM motorista_placas x WHERE x.motorista_id = m.id)`,
+              [empresaId, motoristaId]);
+          }
           const ligado = await cliente.query('SELECT 1 FROM funcionarios WHERE motorista_id = $1', [motoristaId]);
           if (!ligado.rowCount) {
             await cliente.query(
               `INSERT INTO funcionarios (empresa_id, nome, cargo, salario_base, observacoes, motorista_id)
                VALUES ($1, $2, 'Motorista', 0, $3, $4)`,
-              [empresaId, ref.nome, `Criado pela importação de ${origem}: complete salário, CPF e as faixas de comissão.`, motoristaId]);
+              [empresaId, ref.nome, `Criado pela importação de ${origem}: complete salário, CPF, a placa e as faixas de comissão.`, motoristaId]);
           }
           ids.motorista.set(ref.novo, motoristaId);
           criados.motoristas++;

@@ -69,6 +69,8 @@ async function telaInicio() {
           </header>
           <div id="graf-classes"></div>
         </section>
+
+        <section class="card painel-largo dre-inicio" id="dre-mes"><p class="sub">Montando a DRE do mês…</p></section>
       </div>
 
       <div class="cartoes cartoes-mini" id="pendencias"></div>
@@ -195,6 +197,7 @@ async function telaInicio() {
     const painel = $('#painel');
     painel.classList.add('atualizando'); // mantém o desenho anterior, mais claro, enquanto busca
 
+    resumoDRE($('#dre-mes'), mesPainel); // js/dre.js (carrega sozinho)
     const pedidos = await Promise.allSettled([
       api(`/relatorios/evolucao?ate=${mesPainel}&meses=12`),
       api(`/relatorios/diario?mes=${mesPainel}`),

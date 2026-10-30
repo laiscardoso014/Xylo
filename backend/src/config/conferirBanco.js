@@ -28,6 +28,11 @@ const MIGRACOES = [
   { arquivo: 'migracao_faturas.sql', tabela: 'faturas', coluna: null },
   { arquivo: 'migracao_faturas.sql', tabela: 'empresas', coluna: 'mensalidade' },
   { arquivo: 'migracao_precos_por_viagem.sql', funcao: 'fn_viagem_preparar', sem: 'fn_buscar_preco' },
+  { arquivo: 'migracao_dre.sql', tabela: 'categorias_despesa', coluna: 'grupo_dre' },
+  { arquivo: 'migracao_dre.sql', tabela: 'empresas', coluna: 'aliquota_receita' },
+  { arquivo: 'migracao_placa_motorista.sql', tabela: 'motoristas', coluna: 'placa' },
+  { arquivo: 'migracao_placas_historico.sql', tabela: 'motorista_placas', coluna: null },
+  { arquivo: 'migracao_dev_equipe.sql', tabela: 'dev_historico', coluna: null },
 ];
 
 let pendentes = []; // arquivos que faltam rodar (usado na mensagem de erro das telas)

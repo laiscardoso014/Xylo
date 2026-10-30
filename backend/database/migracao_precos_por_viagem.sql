@@ -13,6 +13,9 @@
 --   psql -U postgres -d db_woodcontrol -f database/migracao_precos_por_viagem.sql
 -- =====================================================================
 
+-- O arquivo está em UTF-8 (acentos): no Windows o psql lê em WIN1252 se não avisar
+SET client_encoding = 'UTF8';
+
 CREATE OR REPLACE FUNCTION fn_viagem_preparar() RETURNS trigger AS $$
 BEGIN
     IF NEW.placa IS NOT NULL THEN

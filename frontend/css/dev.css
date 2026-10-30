@@ -10,7 +10,7 @@
 
 .menu-itens a .badge {
     margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 999px;
-    background: var(--wood-500); color: var(--white); font-size: 12px; font-weight: 700; text-align: center;
+    background: var(--green-700); color: var(--white); font-size: 12px; font-weight: 700; text-align: center;
 }
 .menu-itens a .badge:empty { display: none; }
 
@@ -20,7 +20,9 @@
     background: var(--white); color: var(--gray-600); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
 }
 .filtro:hover { border-color: var(--gray-300); color: var(--gray-900); }
-.filtro.ativo { background: var(--gray-900); border-color: var(--gray-900); color: var(--white); }
+.filtro.ativo { background: var(--green-900); border-color: var(--green-900); color: var(--white); }
+[data-tema="escuro"] .filtro.ativo { background: var(--green-700); border-color: var(--green-700); }
+.filtro { background: var(--superficie); }
 
 .detalhes { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; margin: 0 0 16px; font-size: 14px; }
 .detalhes dt { color: var(--texto-suave); }
@@ -38,17 +40,78 @@
 }
 .aviso-info.ok { background: var(--green-50); color: var(--green-800); }
 
-/* Tela de login do painel */
-.dev-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--escuro); }
-.dev-login .card { width: 100%; max-width: 400px; }
-.dev-login .card h1 { margin: 12px 0 4px; font-size: 22px; }
-.dev-login .card p { margin: 0 0 20px; }
-.dev-login .card .grade-campos { grid-template-columns: 1fr; }
-.dev-login .logo-icone { margin: 0; }
-.dev-login .btn { width: 100%; justify-content: center; margin-top: 8px; }
+/* ---------- Login do painel ---------- */
+.dev-login {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 16px;
+    background: #123b2c; position: relative; overflow: hidden;
+}
+.dev-login::before {
+    content: ''; position: absolute; left: 50%; top: 50%; width: 1100px; height: 1100px; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none;
+    background: repeating-radial-gradient(circle, rgba(234, 217, 184, .05) 0 2px, transparent 2px 28px);
+}
+.dev-login-caixa { position: relative; width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.dev-login-marca { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 800; font-size: 22px; font-stretch: 115%; }
+.dev-login-cartao {
+    width: 100%; background: var(--superficie); border-radius: 16px; padding: 32px 30px 26px;
+    box-shadow: 0 34px 60px -24px rgba(0, 0, 0, .6); display: flex; flex-direction: column; gap: 16px;
+}
+.dev-login-cartao h1 { font-size: 26px; font-weight: 800; font-stretch: 110%; letter-spacing: -.01em; color: var(--green-900); line-height: 1.15; }
+.dev-login-cartao > p { margin-top: -8px; color: var(--texto-suave); font-size: 14.5px; }
+.dev-login-cartao .campo input { padding: 11px 12px; font-size: 15px; }
+.dev-login-cartao .btn { width: 100%; padding: 12px; font-size: 15px; }
+.senha-com-botao { position: relative; }
+.senha-com-botao input { padding-right: 46px !important; }
+.senha-com-botao .icone-botao { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+.dev-login-nota { font-size: 12.5px; color: var(--texto-suave); text-align: center; }
+.dev-login-nota code { font-size: 12px; background: var(--gray-100); padding: 1px 5px; border-radius: 4px; }
+.dev-login-voltar { color: rgba(255, 255, 255, .78); font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+.dev-login-voltar:hover { color: #fff; text-decoration: underline; }
+[data-tema="escuro"] .dev-login-cartao h1 { color: var(--gray-900); }
+
+/* Selo "Equipe": deixa claro que é a área interna, não o sistema de uma empresa */
+.selo-interno {
+    display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; font-stretch: 100%;
+    letter-spacing: 0; background: rgba(63, 174, 116, .16); color: #3fae74; vertical-align: middle;
+}
+.menu-topo .selo-interno { margin-left: auto; background: var(--green-50); color: var(--green-800); }
+
+/* ---------- Topo: quem está logado ---------- */
+.quem-dev { display: flex; align-items: center; gap: 10px; }
+.quem-dev .avatar { background: var(--green-900); color: #fff; font-weight: 700; }
+#btn-sair:hover { color: #b91c1c; background: #fee2e2; }
+
+/* ---------- Visão geral ---------- */
+.dev-cabeca { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.dev-cabeca h2 { font-size: 26px; font-weight: 800; font-stretch: 110%; letter-spacing: -.01em; color: var(--gray-900); }
+.dev-cabeca p { color: var(--texto-suave); text-transform: none; }
+.dev-cabeca p::first-letter { text-transform: uppercase; }
+.dev-atencao h3, .dev-grupo { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+.dev-grupo { margin: 28px 0 0; }
+.dev-atencao { padding: 20px 24px; }
+.lista-atencao { list-style: none; margin: 12px 0 0; padding: 0; display: grid; }
+.lista-atencao li { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--borda); font-size: 14.5px; }
+.lista-atencao li:first-child { border-top: 0; }
+.lista-atencao li > i { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--green-50); color: var(--green-700); flex: none; }
+.lista-atencao li.grave > i { background: #fee2e2; color: #b91c1c; }
+.lista-atencao li span { flex: 1; }
+.tudo-em-dia { margin-top: 10px; display: flex; align-items: center; gap: 10px; color: var(--green-800) !important; font-weight: 600; }
+.cartoes-kpi .kpi strong { font-size: 28px; }
 
 @media (max-width: 600px) {
     .detalhes { grid-template-columns: 1fr; gap: 2px; }
     .detalhes dd { margin-bottom: 8px; }
 }
 
+
+/* ---------- Histórico do painel ---------- */
+.dia-historico { margin: 22px 0 8px; text-transform: none; }
+.dia-historico::first-letter { text-transform: uppercase; }
+.lista-hist-dev { list-style: none; margin: 0; padding: 0; }
+.lista-hist-dev li { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-top: 1px solid var(--borda); }
+.lista-hist-dev li:first-child { border-top: 0; }
+.lista-hist-dev li > i { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; flex: none; background: var(--green-50); color: var(--green-700); }
+.lista-hist-dev li > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lista-hist-dev strong { font-weight: 600; color: var(--gray-900); font-size: 14px; }
+.lista-hist-dev .sub { font-size: 12.5px; color: var(--texto-suave); }
+#acoes-usuarios { display: flex; gap: 10px; flex-wrap: wrap; }
+#acoes-usuarios select { padding: 9px 12px; border: 1px solid var(--gray-300); border-radius: 8px; background: var(--superficie); color: var(--texto); }

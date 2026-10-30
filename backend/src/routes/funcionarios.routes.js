@@ -19,7 +19,7 @@ const { body, param, query: q, validationResult } = require('express-validator')
 const { pool, query } = require('../config/db');
 const { autenticar, podeEditar, somenteAdmin } = require('../middlewares/auth');
 const { lerNumero } = require('../utils/numeros');
-const { idDoMotorista } = require('../utils/motoristas');
+const { idDoMotorista, placaLimpa, placaValida } = require('../utils/motoristas');
 const { ordenarFaixas, textoFaixa } = require('../folha/calculo');
 
 const router = express.Router();
@@ -35,7 +35,10 @@ const valor = (v) => (v === '' || v === null || v === undefined ? 0 : lerNumero(
 
 const SELECT = `
   SELECT f.id, f.nome, f.cargo, f.cpf, f.telefone, to_char(f.data_admissao, 'YYYY-MM-DD') AS data_admissao,
-         f.salario_base, f.alimentacao, f.observacoes, f.ativo, f.motorista_id, m.nome AS motorista,
+         f.salario_base, f.alimentacao, f.observacoes, f.ativo, f.motorista_id, m.nome AS motorista, m.placa,
+         COALESCE((SELECT json_agg(json_build_object('placa', mp.placa, 'desde', to_char(mp.desde, 'YYYY-MM-DD'), 'ate', to_char(mp.ate, 'YYYY-MM-DD'))
+                             ORDER BY mp.desde NULLS FIRST)
+                     FROM motorista_placas mp WHERE mp.motorista_id = m.id), '[]') AS placas,
          COALESCE((SELECT json_agg(json_build_object('km_ate', cf.km_ate, 'valor_tonelada', cf.valor_tonelada))
                      FROM comissao_faixas cf WHERE cf.funcionario_id = f.id), '[]') AS faixas
     FROM funcionarios f LEFT JOIN motoristas m ON m.id = f.motorista_id`;
@@ -65,6 +68,28 @@ function lerFaixas(lista) {
   return { faixas: ordenarFaixas(faixas) };
 }
 
+// Placas do motorista com o período de cada uma.
+// Aceita placas: [{ placa, desde }] ou só placa (uma placa, desde sempre).
+// Ordena pela data; cada uma vale até o dia antes da seguinte; a última é a atual.
+function lerPlacas(b) {
+  const bruto = Array.isArray(b.placas) && b.placas.length ? b.placas : [{ placa: b.placa, desde: null }];
+  const lista = bruto
+    .map((p) => ({ placa: placaLimpa(String((p && p.placa) || '')), desde: p && typeof p.desde === 'string' && p.desde.trim() ? p.desde.trim() : null }))
+    .filter((p) => p.placa || p.desde);
+  if (!lista.length) return { erro: 'Informe a placa do caminhão do motorista: é por ela que o sistema reconhece o motorista no ticket.' };
+  for (const p of lista) {
+    if (!p.placa) return { erro: 'Há uma troca de caminhão sem a placa.' };
+    if (!placaValida(p.placa)) return { erro: `Placa "${p.placa}" inválida. Use o formato ABC1234 ou ABC1D23.` };
+    if (p.desde && !/^\d{4}-\d{2}-\d{2}$/.test(p.desde)) return { erro: `Data inválida na placa ${p.placa}.` };
+  }
+  if (lista.filter((p) => !p.desde).length > 1) return { erro: 'Só a primeira placa pode ficar sem a data "a partir de". Informe quando ele passou a usar cada uma das outras.' };
+  lista.sort((a, x) => (a.desde || '') .localeCompare(x.desde || ''));
+  if (new Set(lista.map((p) => p.desde)).size !== lista.length) return { erro: 'Duas placas com a mesma data "a partir de".' };
+  const umDiaAntes = (iso) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
+  lista.forEach((p, i) => { p.ate = i < lista.length - 1 ? umDiaAntes(lista[i + 1].desde) : null; });
+  return { lista };
+}
+
 const regras = [
   body('nome').isString().trim().isLength({ min: 2, max: 150 }).withMessage('Informe o nome do funcionário.'),
   body('cargo').isString().trim().isLength({ min: 2, max: 100 }).withMessage('Informe o cargo.'),
@@ -73,6 +98,8 @@ const regras = [
   body('alimentacao').optional({ values: 'falsy' }).custom((v) => Number.isFinite(lerNumero(v)) && lerNumero(v) >= 0).withMessage('Alimentação inválida.'),
   body('cpf').optional({ values: 'falsy' }).custom((v) => /^\d{11}$/.test(String(v).replace(/\D/g, ''))).withMessage('CPF precisa ter 11 números.'),
   body('motorista').optional({ values: 'falsy' }).isString().isLength({ max: 150 }),
+  body('placa').optional({ values: 'falsy' }).isString().isLength({ max: 10 }),
+  body('placas').optional({ values: 'null' }).isArray({ max: 20 }).withMessage('Lista de placas inválida.'),
 ];
 
 router.get('/', [q('inativos').optional().isIn(['true', 'false'])], validar, async (req, res, next) => {
@@ -82,6 +109,9 @@ router.get('/', [q('inativos').optional().isIn(['true', 'false'])], validar, asy
       query(`${SELECT} WHERE f.empresa_id = $1 ${req.query.inativos === 'true' ? '' : 'AND f.ativo'} ORDER BY f.ativo DESC, f.nome`, [e]),
       // motoristas que aparecem nas cargas mas ainda não são funcionários
       query(`SELECT m.id, m.nome,
+                    COALESCE(m.placa, (SELECT upper(regexp_replace(v.placa, '[^A-Za-z0-9]', '', 'g')) FROM viagens v
+                                        WHERE v.motorista_id = m.id AND v.placa IS NOT NULL AND v.status <> 'Cancelada'
+                                        GROUP BY 1 ORDER BY count(*) DESC LIMIT 1)) AS placa,
                     (SELECT count(*) FROM viagens v WHERE v.motorista_id = m.id AND v.status <> 'Cancelada')
                   + (SELECT count(*) FROM fretes fr WHERE fr.motorista_id = m.id AND fr.status_pagamento <> 'Cancelado') AS cargas
                FROM motoristas m
@@ -106,8 +136,35 @@ async function salvar(req, res, next, id = null) {
       const atual = await c.query('SELECT 1 FROM funcionarios WHERE id = $1 AND empresa_id = $2', [id, e]);
       if (!atual.rowCount) { await c.query('ROLLBACK'); return res.status(404).json({ erro: 'Funcionário não encontrado.' }); }
     }
+    // Motorista: a placa do caminhão é obrigatória (no ticket vem só o 1º nome).
+    // Ele pode ter trocado de caminhão: placas = [{ placa, desde }] (a 1ª pode não ter data)
+    const periodos = textoOuNulo(b.motorista) ? lerPlacas(b) : { lista: [] };
+    if (periodos.erro) { await c.query('ROLLBACK'); return res.status(400).json({ erro: periodos.erro }); }
     const motoristaId = textoOuNulo(b.motorista) ? await idDoMotorista((s, p) => c.query(s, p), e, b.motorista) : null;
     if (motoristaId) {
+      // A mesma placa não pode estar com dois motoristas ativos no mesmo período
+      for (const p of periodos.lista) {
+        const dono = await c.query(
+          `SELECT f.nome, to_char(mp.desde, 'DD/MM/YYYY') AS desde, to_char(mp.ate, 'DD/MM/YYYY') AS ate
+             FROM motorista_placas mp JOIN motoristas m ON m.id = mp.motorista_id JOIN funcionarios f ON f.motorista_id = m.id
+            WHERE mp.empresa_id = $1 AND mp.placa = $2 AND m.id <> $3 AND f.ativo AND f.id <> COALESCE($4, 0)
+              AND daterange(COALESCE(mp.desde, '-infinity'::date), COALESCE(mp.ate, 'infinity'::date), '[]')
+               && daterange(COALESCE($5::date, '-infinity'::date), COALESCE($6::date, 'infinity'::date), '[]')
+            LIMIT 1`,
+          [e, p.placa, motoristaId, id, p.desde, p.ate]);
+        if (dono.rowCount) {
+          const d = dono.rows[0];
+          const quando = d.desde && d.ate ? ` de ${d.desde} a ${d.ate}` : d.desde ? ` desde ${d.desde}` : d.ate ? ` até ${d.ate}` : '';
+          await c.query('ROLLBACK');
+          return res.status(409).json({ erro: `A placa ${p.placa} está com o motorista ${d.nome}${quando}. Se o caminhão passou para este motorista, registre a troca no cadastro de ${d.nome} (com a data) ou ajuste as datas aqui.` });
+        }
+      }
+      await c.query('DELETE FROM motorista_placas WHERE motorista_id = $1', [motoristaId]);
+      for (const p of periodos.lista) {
+        await c.query('INSERT INTO motorista_placas (empresa_id, motorista_id, placa, desde, ate) VALUES ($1, $2, $3, $4, $5)',
+          [e, motoristaId, p.placa, p.desde, p.ate]);
+      }
+      await c.query('UPDATE motoristas SET placa = $1 WHERE id = $2', [periodos.lista[periodos.lista.length - 1].placa, motoristaId]);
       const outro = await c.query('SELECT nome FROM funcionarios WHERE motorista_id = $1 AND id <> COALESCE($2, 0)', [motoristaId, id]);
       if (outro.rowCount) {
         await c.query('ROLLBACK');

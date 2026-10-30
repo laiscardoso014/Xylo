@@ -9,6 +9,9 @@
 --   psql -U postgres -d db_woodcontrol -f database/migracao_faturas.sql
 -- =====================================================================
 
+-- O arquivo está em UTF-8 (acentos): no Windows o psql lê em WIN1252 se não avisar
+SET client_encoding = 'UTF8';
+
 -- Plano de cada empresa
 ALTER TABLE empresas ADD COLUMN IF NOT EXISTS mensalidade    NUMERIC(10,2) CHECK (mensalidade IS NULL OR mensalidade >= 0);
 ALTER TABLE empresas ADD COLUMN IF NOT EXISTS dia_vencimento SMALLINT NOT NULL DEFAULT 10 CHECK (dia_vencimento BETWEEN 1 AND 28);

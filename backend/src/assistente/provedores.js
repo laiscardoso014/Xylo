@@ -370,14 +370,31 @@ async function lerImagemCom(cfg, { instrucao, base64, mime }) {
     }, 90000);
     return (r.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   }
-  const r = await postar(cfg.url, cfg.chave ? { authorization: `Bearer ${cfg.chave}` } : {}, {
-    model: cfg.modeloVisao, temperature: 0, max_tokens: 4000, ...extrasDoModelo(cfg, cfg.modeloVisao),
+  // A resposta é um JSON curto (~300 tokens). Pedir muito estoura o limite
+  // por minuto da conta grátis da Groq (1000 tokens de saída/min em alguns
+  // modelos): ela recusa o pedido inteiro com 429 "Request too large".
+  const groq = cfg.id === 'groq';
+  const corpo = {
+    model: cfg.modeloVisao, temperature: 0, max_tokens: groq ? 800 : 2000,
+    ...extrasDoModelo(cfg, cfg.modeloVisao),
+    // Qwen na Groq: sem "pensar" antes (o pensamento também conta nos 800)
+    ...(groq && /qwen/.test(cfg.modeloVisao) ? { reasoning_effort: 'none' } : {}),
     messages: [{ role: 'user', content: [
       { type: 'text', text: instrucao },
       { type: 'image_url', image_url: { url: `data:${mime};base64,${base64}` } },
     ] }],
-  }, 90000);
-  return r.choices?.[0]?.message?.content || '';
+  };
+  const cabecalhos = cfg.chave ? { authorization: `Bearer ${cfg.chave}` } : {};
+  let r;
+  try {
+    r = await postar(cfg.url, cabecalhos, corpo, 60000);
+  } catch (err) {
+    // modelo que não aceita desligar o raciocínio: tenta de novo sem esses campos
+    if (err.status !== 400 || !/reasoning/i.test(err.message)) throw err;
+    delete corpo.reasoning_effort; delete corpo.reasoning_format;
+    r = await postar(cfg.url, cabecalhos, corpo, 60000);
+  }
+  return semPensamento(r.choices?.[0]?.message?.content || '');
 }
 
 // ---------------------------------------------------------------------

@@ -99,7 +99,7 @@ async function telaFretes() {
         <tbody>
           ${lista.map((f) => `
             <tr class="${f.status_pagamento === 'Cancelado' ? 'inativo' : ''}">
-              <td><strong>Nº ${esc(f.numero_carga)}</strong><div class="sub">${formatarDataISO(f.data)}</div></td>
+              <td data-ordem="${esc(f.data)} ${String(f.numero_carga).padStart(6, '0')}"><strong>Nº ${esc(f.numero_carga)}</strong><div class="sub">${formatarDataISO(f.data)}</div></td>
               <td>${esc(f.cliente)}<div class="sub">${esc(f.destino) || 'sem destino'}${f.motorista ? ` · ${esc(f.motorista)}` : ''}</div></td>
               <td class="num">${formatarPeso(f.toneladas)}</td>
               <td class="num">${f.valor_fechado !== null ? 'valor fechado' : `${formatarMoeda(f.valor_tonelada)}/t`}</td>

@@ -1,0 +1,48 @@
+/* =====================================================================
+   DRE para apresentação (dre.html): folha A4, sempre clara
+   ===================================================================== */
+body.pagina-dre { background: #eef0f2; color: #111827; padding: 0 16px 40px; margin: 0; }
+.acoes-dre { max-width: 900px; margin: 0 auto; padding: 14px 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.acoes-dre .espaco { flex: 1; }
+.acoes-dre .voltar { color: #4b5563; text-decoration: none; font-weight: 600; display: inline-flex; gap: 8px; align-items: center; }
+.folha-dre { max-width: 900px; margin: 0 auto; background: #fff; padding: 44px 50px; border-radius: 6px; box-shadow: 0 10px 30px -12px rgba(0, 0, 0, .25); }
+body.dre-largo .folha-dre, body.dre-largo .acoes-dre { max-width: 1200px; }
+.folha-dre .carregando { color: #4b5563; text-align: center; padding: 60px 0; }
+.dre-topo { display: flex; align-items: center; gap: 16px; padding-bottom: 16px; border-bottom: 3px solid #15803d; }
+.dre-topo img { max-height: 56px; max-width: 170px; object-fit: contain; }
+.dre-topo strong { display: block; font-size: 17px; }
+.dre-topo span { color: #4b5563; font-size: 13px; }
+.folha-dre h1 { font-size: 21px; margin: 22px 0 2px; color: #14532d; letter-spacing: -.01em; }
+.dre-periodo { font-size: 16px; font-weight: 700; margin: 0; }
+.dre-periodo span { font-weight: 500; color: #4b5563; text-transform: none; font-size: 14px; }
+.dre-sub { color: #6b7280; font-size: 12.5px; margin: 4px 0 16px; }
+.folha-dre .dre-wrap { border: 0; }
+.folha-dre .dre-tabela { font-size: 13px; }
+.folha-dre .dre-tabela th { background: #166534; color: #fff; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.dre-bloco { margin-top: 22px; }
+.dre-bloco h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #15803d; margin: 0 0 8px; }
+.dre-notas ol { margin: 0; padding-left: 18px; color: #4b5563; font-size: 12.5px; display: grid; gap: 3px; }
+.dre-notas li.aviso { color: #92400e; }
+.dre-assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-top: 60px; text-align: center; font-size: 13px; }
+.dre-assinaturas[hidden] { display: none; }
+.dre-assinaturas span { display: block; border-top: 1px solid #111827; margin-bottom: 6px; }
+.dre-assinaturas small { display: block; color: #6b7280; }
+.dre-rodape { margin-top: 30px; padding-top: 10px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 11px; color: #9ca3af; }
+.erro-dre { text-align: center; padding: 60px 0; }
+
+@media (max-width: 640px) {
+    body.pagina-dre { padding: 0; }
+    .acoes-dre { padding: 12px 16px; }
+    .folha-dre { padding: 22px 16px; border-radius: 0; }
+    .dre-assinaturas { grid-template-columns: 1fr; gap: 40px; }
+}
+
+@page { size: A4; margin: 12mm; }
+@media print {
+    body.pagina-dre { background: #fff; padding: 0; }
+    .acoes-dre { display: none !important; }
+    .folha-dre { box-shadow: none; padding: 0; max-width: none; border-radius: 0; }
+    .dre-tabela tr { break-inside: avoid; }
+    .dre-tabela th, .dre-tabela tr.dre-subtotal td, .dre-tabela tr.dre-resultado td, .dre-tabela tr.dre-grupo td, .dre-barra span, .dre-legenda i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .dre-assinaturas { break-inside: avoid; }
+}

@@ -20,7 +20,7 @@
 // O resto do ticket (CNPJ, endereço, telefone) é ignorado.
 // =====================================================================
 const { query } = require('../config/db');
-const { motoristasCadastrados, AVISO_CADASTRO } = require('../utils/motoristas');
+const { motoristasCadastrados, donoDaPlaca, placaNaData, AVISO_CADASTRO } = require('../utils/motoristas');
 const { norm } = require('../importacao/importador');
 
 // ---------------------------------------------------------------------
@@ -293,14 +293,11 @@ async function ligarCadastros(empresaId, lido) {
   for (const c of ['ticket', 'data', 'hora_pesagem', 'placa', 'motorista', 'peso_liquido']) if (campos[c] !== null) origem[c] = 'ticket';
   const avisos = [...lido.avisos];
 
-  // Motorista: só vale se estiver cadastrado (Funcionários, "É motorista"); aceita outra grafia (JUNIOR / Júnior)
-  // e o nome do funcionário (ex.: ticket "ODAIR" -> funcionário Odair, que nas cargas é "TIO DAIA")
-  if (lido.motorista) {
-    const m = motoristas.find((x) => norm(x.nome) === norm(lido.motorista) || norm(x.funcionario) === norm(lido.motorista))
-      || acharPorNome(lido.motorista, motoristas);
-    if (m) { campos.motorista = m.nome; campos.motorista_id = m.id; origem.motorista_id = 'ticket'; }
-    else avisos.push(`O motorista "${lido.motorista}" do ticket não está cadastrado. ${AVISO_CADASTRO}`);
-  }
+  // Motorista: só vale se estiver cadastrado (Funcionários, "É motorista").
+  // 1º pela PLACA (cada motorista tem o seu caminhão; no ticket vem só o 1º nome),
+  // depois pelo nome (outra grafia, 1º nome ou o nome do funcionário).
+  const m = motoristaDoTicket(lido, motoristas, avisos);
+  if (m) { campos.motorista = m.nome; campos.motorista_id = m.id; origem.motorista_id = 'ticket'; }
 
   // Cliente: normalmente é o dono da balança (emissor); senão a "entidade"
   const cliente = acharPorNome(lido.emissor, clientes) || acharPorNome(lido.entidade, clientes);
@@ -381,6 +378,51 @@ async function ligarCadastros(empresaId, lido) {
   };
 }
 
+// Motorista do ticket: pela placa (o certo) ou pelo nome. Avisa se não bater.
+function motoristaDoTicket(lido, motoristas, avisos) {
+  const placa = lido.placa ? String(lido.placa).toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+  const pelaPlaca = placa ? donoDaPlaca(motoristas, placa, lido.data) : null;
+  const peloNome = lido.motorista ? acharMotoristaPeloNome(lido.motorista, motoristas) : null;
+  if (pelaPlaca) {
+    if (lido.motorista && !nomeCombina(lido.motorista, pelaPlaca)) {
+      avisos.push(`No ticket o motorista é "${lido.motorista}", mas a placa ${placa} é de ${pelaPlaca.funcionario || pelaPlaca.nome}: confira o motorista.`);
+    }
+    return pelaPlaca;
+  }
+  if (peloNome) {
+    const placaDele = placaNaData(peloNome, lido.data);
+    if (placa && placaDele && placaDele !== placa) {
+      avisos.push(`${peloNome.funcionario || peloNome.nome} usava a placa ${placaDele} nesta data, mas o ticket é da ${placa}: confira o motorista e a placa (ou registre a troca de caminhão no cadastro dele).`);
+    }
+    return peloNome;
+  }
+  if (lido.motorista) avisos.push(`O motorista "${lido.motorista}" do ticket não está cadastrado${placa ? ` e nenhum motorista tem a placa ${placa}` : ''}. ${AVISO_CADASTRO}`);
+  else if (placa) avisos.push(`Nenhum motorista cadastrado usava a placa ${placa} nesta data: escolha o motorista (e confira as placas no cadastro dele).`);
+  return null;
+}
+
+// Pelo nome: igual (apelido ou nome completo), parecido, ou só o 1º nome (se for de um só)
+function acharMotoristaPeloNome(texto, motoristas) {
+  const t = norm(texto);
+  const exato = motoristas.find((x) => norm(x.nome) === t || norm(x.funcionario) === t);
+  if (exato) return exato;
+  // só o 1º nome e há dois motoristas com ele (dois "JOÃO"): só a placa resolve
+  const ps = palavras(texto);
+  const mesmoPrimeiro = (x) => palavras(x.funcionario || '')[0] === ps[0] || palavras(x.nome)[0] === ps[0];
+  if (ps.length === 1 && motoristas.filter(mesmoPrimeiro).length > 1) return null;
+  const parecido = acharPorNome(texto, motoristas)
+    || acharPorNome(texto, motoristas.map((x) => ({ ...x, nome: x.funcionario || x.nome })));
+  if (parecido) return motoristas.find((x) => x.id === parecido.id);
+  if (!ps.length) return null;
+  const doPrimeiro = motoristas.filter(mesmoPrimeiro);
+  return doPrimeiro.length === 1 ? doPrimeiro[0] : null;
+}
+const nomeCombina = (texto, m) => {
+  const ps = palavras(texto);
+  const de = new Set([...palavras(m.nome), ...palavras(m.funcionario || '')]);
+  return ps.length > 0 && ps.some((p) => de.has(p));
+};
+
 // Como estava impresso (para conferir na tela)
 const comoImpresso = (lido) => ({
   emissor: lido.emissor, entidade: lido.entidade, local: lido.local, terceiro: lido.terceiro,
@@ -414,10 +456,7 @@ async function ligarFrete(empresaId, lido) {
   const obs = [lido.ticket && `Ticket ${lido.ticket}`, lido.placa && `placa ${lido.placa}`, lido.motorista && `motorista ${lido.motorista}`]
     .filter(Boolean).join(' · ') || null;
   const motoristas = await motoristasCadastrados(query, empresaId);
-  const achado = lido.motorista
-    ? motoristas.find((m) => norm(m.nome) === norm(lido.motorista) || norm(m.funcionario) === norm(lido.motorista)) || acharPorNome(lido.motorista, motoristas)
-    : null;
-  if (lido.motorista && !achado) avisos.push(`O motorista "${lido.motorista}" do ticket não está cadastrado. ${AVISO_CADASTRO}`);
+  const achado = motoristaDoTicket(lido, motoristas, avisos);
   const campos = {
     data: lido.data, toneladas: lido.peso_liquido, cliente_id: null, destino: null,
     cobranca: 'tonelada', valor_tonelada: null, observacoes: obs, motorista: achado ? achado.nome : lido.motorista, motorista_id: achado ? achado.id : null,

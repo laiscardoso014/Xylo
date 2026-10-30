@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>DRE | Xylo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/dre-apresentacao.css">
+</head>
+
+<body class="pagina-dre">
+    <!-- Barra de ações (não sai na impressão) -->
+    <div class="acoes-dre">
+        <a href="main.html#relatorios" class="voltar"><i class="fas fa-arrow-left"></i> Voltar aos relatórios</a>
+        <span class="espaco"></span>
+        <label class="opcao"><input type="checkbox" id="mostrar-detalhes"> Detalhes</label>
+        <label class="opcao"><input type="checkbox" id="mostrar-assinaturas" checked> Assinaturas</label>
+        <button type="button" id="btn-imprimir" class="btn btn-primario"><i class="fas fa-print"></i> Imprimir / salvar PDF</button>
+    </div>
+
+    <!-- A demonstração (folha A4) -->
+    <main class="folha-dre" id="folha">
+        <p class="carregando">Carregando a DRE…</p>
+    </main>
+
+    <script src="js/comum.js"></script>
+    <script src="js/dre.js"></script>
+    <script src="js/dre-apresentacao.js"></script>
+</body>
+
+</html>

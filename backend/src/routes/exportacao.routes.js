@@ -3,6 +3,7 @@
 //
 //   GET /api/exportacao/relatorio?tipo=fechamento|clientes|florestas|empreiteiros|classes&mes=2026-01
 //   GET /api/exportacao/relatorio?tipo=anual&ano=2026
+//   GET /api/exportacao/dre?de=2026-01&ate=2026-12&comparar=anterior&mensal=1   (DRE com fórmulas)
 //
 // A planilha sai pronta para usar: logo e dados da empresa no topo, cabeçalho
 // congelado com filtro, valores em R$, datas, linha de TOTAL com fórmulas SOMA
@@ -13,7 +14,8 @@ const express = require('express');
 const { query: q, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { autenticar } = require('../middlewares/auth');
-const { novaPasta } = require('../utils/xlsx');
+const { novaPasta, letra } = require('../utils/xlsx');
+const DRE = require('../relatorios/dre');
 const { dados } = require('./relatorios.routes');
 
 const router = express.Router();
@@ -214,6 +216,144 @@ router.get(
       const nome = `xylo-${tipo}-${tipo === 'anual' ? ano : mes}.xlsx`;
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
+      res.send(pasta.gerar());
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------
+// DRE em Excel: a demonstração com FÓRMULAS (subtotais, AV% e variação
+// recalculam se alguém ajustar um valor), indicadores, critérios e as
+// despesas que entraram em cada linha.
+// ---------------------------------------------------------------------
+const mesOk = /^\d{4}-(0[1-9]|1[0-2])$/;
+router.get(
+  '/dre',
+  [q('de').matches(mesOk).withMessage('Informe o mês inicial.'), q('ate').matches(mesOk).withMessage('Informe o mês final.'),
+    q('comparar').optional({ values: 'falsy' }).isIn(['anterior', 'ano_anterior']), q('mensal').optional().isIn(['0', '1'])],
+  validar,
+  async (req, res, next) => {
+    try {
+      const id = req.usuario.empresaId;
+      const d = await DRE.calcularDRE(id, { de: req.query.de, ate: req.query.ate, comparar: req.query.comparar || null, mensal: req.query.mensal === '1' });
+      const [emp, quem] = await Promise.all([
+        query('SELECT nome, razao_social, cnpj, cidade, uf, logo FROM empresas WHERE id = $1', [id]),
+        query('SELECT nome FROM usuarios WHERE id = $1', [req.usuario.id]),
+      ]);
+      const e = emp.rows[0];
+      const empresaLinha = [e.razao_social || e.nome, e.cnpj ? `CNPJ ${cnpjFormatado(e.cnpj)}` : '', [e.cidade, e.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ');
+      const emitido = `Emitido em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} por ${quem.rows[0]?.nome || ''} · Xylo`;
+      const regime = d.fiscal.regime_nome ? `Regime: ${d.fiscal.regime_nome}` : 'Regime tributário não informado';
+
+      // Fórmulas: subtotal = soma dos filhos diretos; resultados = encadeados
+      const L = d.linhas;
+      const idx = Object.fromEntries(L.map((l, k) => [l.id, k]));
+      const filhos = (k) => {
+        const lista = [];
+        for (let j = k + 1; j < L.length && L[j].nivel > L[k].nivel; j++) if (L[j].nivel === L[k].nivel + 1) lista.push(j);
+        return lista;
+      };
+      const ENCADEADOS = {
+        receita_liquida: ['receita_bruta', 'deducoes'], lucro_bruto: ['receita_liquida', 'custos'],
+        resultado_operacional: ['lucro_bruto', 'despesas_operacionais'], resultado_antes_ir: ['resultado_operacional', 'resultado_financeiro'],
+        resultado_liquido: ['resultado_antes_ir', 'ir_csll'],
+      };
+      const formula = (k, valorDe, col = null) => {
+        const ref = (j) => `{${col ? `${col}:` : ''}L${j}}`;
+        const l = L[k];
+        const valor = valorDe(l);
+        if (ENCADEADOS[l.id]) return { formula: ENCADEADOS[l.id].map((x) => ref(idx[x])).join('+'), valor };
+        const f = filhos(k);
+        if (f.length && l.id !== 'impostos_calc') return { formula: f.map(ref).join('+'), valor };
+        return valor;
+      };
+
+      const colunas = [{ titulo: 'Descrição', campo: 'rotulo', largura: 52 }];
+      // coluna do período (ou uma por mês + total)
+      if (d.colunas_meses) {
+        d.colunas_meses.forEach((m, j) => colunas.push({ titulo: m.rotulo, formato: 'moeda', largura: 14, valor: (l) => formula(l._k, (x) => x.meses[j]) }));
+        const ini = letra(1); const fim = letra(d.colunas_meses.length);
+        colunas.push({ titulo: 'Total', formato: 'moeda', largura: 16, valor: (l) => ({ formula: `SUM({${ini}:L${l._k}}:{${fim}:L${l._k}})`, valor: l.valor }) });
+      } else {
+        colunas.push({ titulo: d.periodo.nome, formato: 'moeda', largura: 18, valor: (l) => formula(l._k, (x) => x.valor) });
+      }
+      const colTotal = letra(colunas.length - 1);
+      const kRL = idx.receita_liquida;
+      colunas.push({ titulo: 'AV %', formato: 'percentual', largura: 9, valor: (l) => ({ formula: `IF({${colTotal}:L${kRL}}=0,"",{${colTotal}:L${l._k}}/{${colTotal}:L${kRL}})`, valor: l.av !== null ? l.av / 100 : null }) });
+      if (d.comparativo) {
+        const colAnt = letra(colunas.length);
+        colunas.push({ titulo: d.comparativo.nome, formato: 'moeda', largura: 18, valor: (l) => formula(l._k, (x) => x.anterior, colAnt) });
+        colunas.push({ titulo: 'Variação %', formato: 'percentual', largura: 11, valor: (l) => ({ formula: `IF({${colAnt}:L${l._k}}=0,"",({${colTotal}:L${l._k}}-{${colAnt}:L${l._k}})/ABS({${colAnt}:L${l._k}}))`, valor: l.variacao !== null ? l.variacao / 100 : null }) });
+      }
+      const estilo = (l) => (l.tipo === 'resultado' ? 'resultado' : l.tipo === 'subtotal' ? 'subtotal' : l.nivel === 0 ? 'grupo' : l.nivel === 2 ? 'detalhe' : 'item');
+      const linhas = L.map((l, k) => ({ ...l, _k: k, _estilo: estilo(l) }));
+
+      const ind = d.indicadores;
+      const pctTxt = (v) => (v === null || v === undefined ? '–' : `${String(v.toFixed(1)).replace('.', ',')}%`);
+      const brl = (v) => (v === null || v === undefined ? '–' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+      const pasta = novaPasta();
+      pasta.aba('DRE', {
+        titulo: `DRE — Demonstração do Resultado do Exercício · ${d.periodo.nome}`,
+        subtitulo: empresaLinha, logo: e.logo, notas: [`${regime} · Regime de competência`, emitido],
+        colunas, linhas, filtro: false, paisagem: Boolean(d.colunas_meses || d.comparativo),
+        rodape: [
+          `Margem bruta ${pctTxt(ind.margem_bruta)} · Margem operacional ${pctTxt(ind.margem_operacional)} · Margem líquida ${pctTxt(ind.margem_liquida)} (sobre a receita líquida)`,
+          `${ind.viagens} viagem(ns), ${Number(ind.toneladas).toLocaleString('pt-BR')} t de madeira · receita ${brl(ind.receita_por_tonelada)}/t · custo da madeira ${brl(ind.custo_madeira_por_tonelada)}/t · resultado ${brl(ind.resultado_por_tonelada)}/t`,
+          'AV % = análise vertical sobre a receita operacional líquida. Valores negativos = deduções, custos e despesas.',
+          ...d.avisos.map((a) => `Atenção: ${a}`),
+          '', '______________________________________          ______________________________________',
+          'Responsável pela empresa                                         Contador(a) · CRC',
+        ],
+      });
+
+      // Critérios
+      const fora = d.fora_da_dre;
+      const nomesFora = { floresta: 'Pagamentos e adiantamentos a florestas', empreiteiro: 'Pagamentos e adiantamentos a empreiteiros', folha: 'Pagamento da folha (o custo é a folha do mês)', adiantamento: 'Adiantamentos da folha', categoria: 'Categorias marcadas "não entra na DRE"' };
+      pasta.aba('Critérios', {
+        titulo: 'Como a DRE foi calculada', subtitulo: empresaLinha, filtro: false, paisagem: false,
+        colunas: [{ titulo: 'Linha da DRE', campo: 'linha', largura: 34 }, { titulo: 'De onde vem', campo: 'origem', largura: 90 }],
+        linhas: [
+          { linha: 'Regime', origem: 'Competência: cada valor entra no mês da viagem, do frete, da folha ou da despesa (não do pagamento).' },
+          { linha: 'Venda de madeira', origem: 'Soma do valor das viagens (peso × valor de venda por tonelada), sem as canceladas.' },
+          { linha: 'Serviços de frete', origem: 'Soma dos fretes do período, sem os cancelados.' },
+          { linha: 'Impostos sobre a receita', origem: `${d.fiscal.aliquota_receita ? `${d.fiscal.aliquota_receita}% sobre a receita bruta (Dados da empresa)` : 'Alíquota não informada'} + despesas das categorias do grupo "Impostos".` },
+          { linha: 'Compra de madeira', origem: 'Valor pago à floresta informado em cada viagem (peso × R$/t).' },
+          { linha: 'Corte e carregamento', origem: 'Valor do empreiteiro informado em cada viagem (e as divisões de carga).' },
+          { linha: 'Custos da operação', origem: 'Despesas das categorias do grupo "Custos" (combustível, manutenção...).' },
+          { linha: 'Pessoal', origem: 'Folha de pagamento do mês (salário, comissão, alimentação e extras) + despesas do grupo "Pessoal".' },
+          { linha: 'Administrativas / comerciais / financeiras', origem: 'Despesas das categorias de cada grupo (a escolha fica na tela da DRE).' },
+          { linha: 'IRPJ e CSLL', origem: d.fiscal.aliquota_ir_csll ? `${d.fiscal.aliquota_ir_csll}% sobre ${d.fiscal.base_ir_csll === 'receita' ? 'a receita bruta' : 'o resultado antes do IR (se positivo)'} + despesas do grupo "IRPJ e CSLL".` : 'Sem alíquota informada: só as despesas do grupo "IRPJ e CSLL".' },
+          ...fora.map((f) => ({ linha: 'Fora da DRE', origem: `${nomesFora[f.motivo] || f.motivo}: ${f.qtd} lançamento(s), ${brl(f.valor)} (o custo já está em outra linha).` })),
+        ],
+      });
+
+      // Despesas que entraram, por grupo
+      const desp = await query(
+        `SELECT to_char(d.data, 'YYYY-MM-DD') AS data, d.descricao, c.nome AS categoria, COALESCE(c.grupo_dre, fn_grupo_dre_sugerido(c.nome)) AS grupo,
+                d.favorecido, d.valor, d.status
+           FROM despesas d JOIN categorias_despesa c ON c.id = d.categoria_id
+          WHERE d.empresa_id = $1 AND d.status <> 'Cancelado' AND to_char(d.data, 'YYYY-MM') BETWEEN $2 AND $3
+            AND d.floresta_id IS NULL AND d.empreiteiro_id IS NULL
+            AND NOT EXISTS (SELECT 1 FROM folhas fo WHERE fo.despesa_id = d.id)
+            AND NOT EXISTS (SELECT 1 FROM adiantamentos ad WHERE ad.despesa_id = d.id)
+            AND COALESCE(c.grupo_dre, fn_grupo_dre_sugerido(c.nome)) <> 'nao_entra'
+          ORDER BY 4, d.data`, [id, d.periodo.de, d.periodo.ate]);
+      pasta.aba('Despesas na DRE', {
+        titulo: `Despesas consideradas · ${d.periodo.nome}`, subtitulo: empresaLinha, total: true,
+        linhas: desp.rows.map((x) => ({ ...x, grupo: DRE.GRUPOS[x.grupo] || x.grupo })),
+        colunas: [
+          { titulo: 'Grupo da DRE', campo: 'grupo', largura: 30 }, { titulo: 'Data', campo: 'data', formato: 'data', largura: 11 },
+          { titulo: 'Categoria', campo: 'categoria', largura: 22 }, { titulo: 'Descrição', campo: 'descricao', largura: 40 },
+          { titulo: 'Favorecido', campo: 'favorecido', largura: 22 }, { titulo: 'Valor', campo: 'valor', formato: 'moeda', total: 'soma', largura: 15 },
+          { titulo: 'Situação', campo: 'status', largura: 10 },
+        ],
+      });
+
+      const nome = `DRE ${d.periodo.de}${d.periodo.de !== d.periodo.ate ? ` a ${d.periodo.ate}` : ''} - ${(e.nome || 'empresa').replace(/[^\w\- ]+/g, '').trim()}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${nome}"; filename*=UTF-8''${encodeURIComponent(nome)}`);
       res.send(pasta.gerar());
     } catch (err) {
       next(err);

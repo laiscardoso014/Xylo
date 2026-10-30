@@ -5,6 +5,7 @@
 // Entende perguntas por palavras-chave e responde com as MESMAS ferramentas
 // que a IA usa - então os números são sempre os do banco.
 // =====================================================================
+const { query } = require('../config/db');
 const { executarFerramenta } = require('./ferramentas');
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -41,18 +42,41 @@ const AJUDA = `Posso ajudar com os dados do Xylo. Experimente perguntar:
 - **Ticket 96403** ou **placa QJL9F85**
 - **Preços de compra** (praticados nas viagens)
 - **O que falta receber e pagar?**
-- **Comparar os últimos 6 meses**`;
+- **Comparar os últimos 6 meses**
+- **Folha do mês** · **Comissão do POPO** · **Adiantamentos**
+- **Funcionários** · **Despesas do mês** · **DRE do mês**
+- **Fretes do BUTI**`;
 
-async function responderBasico(empresaId, texto, mesFoco) {
+async function responderBasico(empresaId, texto, mesFoco, perfil = 'Visualização') {
   const t = semAcento(texto);
   const mes = mesDaPergunta(texto, mesFoco);
-  const usar = (nome, entrada) => executarFerramenta(empresaId, nome, entrada);
+  const usar = (nome, entrada) => executarFerramenta(empresaId, nome, entrada, perfil);
 
   // Ticket ou placa citados
   const ticket = t.match(/ticket\s*(?:n[ºo.]?\s*)?(\d{3,})/);
   if (ticket) return formatarViagens(await usar('buscar_viagens', { ticket: ticket[1] }), `ticket ${ticket[1]}`);
   const placa = texto.toUpperCase().match(/\b([A-Z]{3})-?(\d[A-Z0-9]\d{2})\b/);
   if (placa) return formatarViagens(await usar('buscar_viagens', { placa: placa[1] + placa[2], mes: /\bmes\b|janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro/.test(t) ? mes : undefined }), `placa ${placa[1]}${placa[2]}`);
+
+  // Pessoal (Administrador e Financeiro)
+  const pessoal = perfil === 'Administrador' || perfil === 'Financeiro';
+  const semAcesso = { texto: 'Informações de pessoal (salários, folha e adiantamentos) são só para os perfis Administrador e Financeiro.' };
+  if (/comiss/.test(t)) {
+    if (!pessoal) return semAcesso;
+    const quem = texto.replace(/comiss[aã]o|do|da|de|motorista|em|no|mes|m[eê]s|janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|\d{4}|[?!.,]/gi, ' ').trim();
+    if (quem.length >= 3) return { texto: textoComissao(await usar('comissao_motorista', { motorista: quem, mes })) };
+    return { texto: textoFolha(await usar('folha_do_mes', { mes })) };
+  }
+  if (/folha|salario|pagamento dos funcionarios/.test(t)) return pessoal ? { texto: textoFolha(await usar('folha_do_mes', { mes })) } : semAcesso;
+  if (/adiantament|\bvales?\b/.test(t)) return pessoal ? { texto: textoAdiantamentos(await usar('adiantamentos', { so_em_aberto: true })) } : semAcesso;
+  if (/funcionari|motorista|placa dos/.test(t)) {
+    if (pessoal) return { texto: textoFuncionarios(await usar('funcionarios', {})) };
+    return { texto: textoMotoristas(await usar('cadastros', { tipo: 'motoristas' })) };
+  }
+  if (/\bdre\b|lucro liquido|margem|demonstra/.test(t)) return { texto: textoDRE(await usar('dre', { de: mes })) };
+  if (/despesas? (de|do|da|com)|gastos? (de|do|da|com)|categoria/.test(t) && !/resumo/.test(t)) {
+    return { texto: textoDespesas(await usar('buscar_despesas', { mes }), mes) };
+  }
 
   if (/confer|verific|erro|problema|revis|inconsist|errad/.test(t)) {
     const r = await usar('conferir_mes', { mes });
@@ -69,6 +93,12 @@ async function responderBasico(empresaId, texto, mesFoco) {
     const qtd = Number((t.match(/(\d{1,2})\s*mes/) || [])[1]) || 6;
     return { texto: textoEvolucao(await usar('evolucao', { ate: mes, meses: qtd })) };
   }
+  // Fretes (e de um cliente citado pelo nome)
+  if (/frete/.test(t)) {
+    const cliente = await clienteCitado(empresaId, t);
+    return { texto: formatarFretes(await usar('buscar_fretes', { mes, cliente: cliente || undefined }), mes, cliente) };
+  }
+
   const tipo = /empreit/.test(t) ? 'empreiteiro' : /floresta/.test(t) ? 'floresta' : /client|serrari/.test(t) ? 'cliente'
     : /classe|lixo|\bfina\b|media|grossa/.test(t) ? 'classe' : null;
   if (tipo) return { texto: textoRelatorio(await usar('relatorio', { tipo, mes })) };
@@ -107,7 +137,7 @@ function textoRelatorio(r) {
   const titulo = { cliente: 'Por cliente', floresta: 'Por floresta', empreiteiro: 'Por empreiteiro', classe: 'Por classe' }[r.tipo];
   if (!r.linhas.length) return `Não há dados de ${titulo.toLowerCase()} em ${nomeMes(r.mes)}.`;
   const linha = {
-    cliente: (l) => `- **${l.nome}**: ${l.viagens} viagens, ${ton(l.toneladas)}, ${brl(l.valor_total)}`,
+    cliente: (l) => `- **${l.nome}**: ${[l.viagens && `${l.viagens} viagens (${ton(l.toneladas_madeira)}, ${brl(l.valor_madeira)})`, l.fretes && `${l.fretes} frete${l.fretes === 1 ? '' : 's'} (${ton(l.toneladas_fretes)}, ${brl(l.valor_fretes)})`].filter(Boolean).join(' + ')}, **${brl(l.valor_total)}**`,
     classe: (l) => `- **${l.nome}**: ${ton(l.toneladas)} em ${l.viagens} viagens, ${brl(l.valor_total)}`,
     floresta: (l) => `- **${l.nome}**: ${ton(l.toneladas)}, a pagar ${brl(l.a_pagar)}, pago ${brl(l.pago_no_mes)}, **saldo ${brl(l.saldo)}**`,
     empreiteiro: (l) => `- **${l.nome}**: produziu ${brl(l.producao)} (${ton(l.toneladas)}), adiantado ${brl(l.adiantamentos_e_pagamentos)}, **líquido ${brl(l.liquido_a_pagar)}**`,
@@ -116,6 +146,66 @@ function textoRelatorio(r) {
     ? `\n**Total líquido a pagar aos empreiteiros: ${brl(r.linhas.reduce((t, l) => t + l.liquido_a_pagar, 0))}**`
     : r.tipo === 'floresta' ? `\n**Saldo total com as florestas: ${brl(r.linhas.reduce((t, l) => t + l.saldo, 0))}**` : '';
   return [`**${titulo} — ${nomeMes(r.mes)}**`, ...r.linhas.map(linha)].join('\n') + total;
+}
+
+const dataBR = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
+
+function textoFolha(r) {
+  if (!r.linhas) return `${r.aviso}`;
+  const t = r.totais;
+  return [`**Folha de ${nomeMes(r.mes)}** (${r.situacao}, ${r.funcionarios} funcionários): **saldo a pagar ${brl(t.saldo_a_pagar)}**`,
+    `- Salários ${brl(t.salario_base)} · comissões ${brl(t.comissao)} · alimentação ${brl(t.alimentacao)} · extras ${brl(t.extras)}`,
+    `- Adiantamentos descontados ${brl(t.adiantamento)}${t.desconto ? ` · descontos ${brl(t.desconto)}` : ''}`,
+    ...r.linhas.map((l) => `- ${l.nome}: ${brl(l.saldo_a_pagar)}${l.comissao ? ` (comissão ${brl(l.comissao)})` : ''}${l.pendencias ? ' · comissão incompleta' : ''}`)].join('\n');
+}
+function textoComissao(r) {
+  if (!r.encontrado && r.aviso) return r.aviso;
+  const pend = [r.cargas_sem_km && `${r.cargas_sem_km} carga(s) sem km`, r.sem_faixa && 'sem faixa para alguma distância'].filter(Boolean);
+  return [`**Comissão de ${r.funcionario}${r.nome_nas_cargas && r.nome_nas_cargas !== r.funcionario ? ` (${r.nome_nas_cargas})` : ''} em ${nomeMes(r.mes)}: ${brl(r.comissao_total)}**`,
+    `- ${r.cargas} cargas, ${ton(r.toneladas)}${r.placa ? ` · placa ${r.placa}` : ''}`,
+    r.faixas.length ? `- Faixas: ${r.faixas.join(' · ')}` : '- Sem faixas de comissão cadastradas (Pessoal › Funcionários)',
+    pend.length ? `- Atenção: ${pend.join(', ')}. Cadastre o km em Rotas e distâncias.` : ''].filter(Boolean).join('\n');
+}
+function textoAdiantamentos(r) {
+  if (!r.quantidade) return 'Não há adiantamentos com valor a descontar.';
+  return [`**Adiantamentos a descontar: ${brl(r.falta_descontar)}** (${r.quantidade})`,
+    ...r.adiantamentos.slice(0, 12).map((a) => `- ${a.nome}: ${brl(a.valor)} em ${dataBR(a.data)}, falta ${brl(a.falta_descontar)} (${a.parcelas}x)`)].join('\n');
+}
+function textoFuncionarios(r) {
+  if (!r.quantidade) return 'Nenhum funcionário cadastrado (Pessoal › Funcionários).';
+  return [`**${r.quantidade} funcionários ativos** (${r.motoristas} motoristas) · base mensal ${brl(r.folha_base_mensal)}`,
+    ...r.funcionarios.map((f) => `- ${f.nome} (${f.cargo})${f.motorista ? ` · cargas: ${f.nome_nas_cargas}${f.placa_atual ? `, placa ${f.placa_atual}` : ', **sem placa**'}` : ''}`)].join('\n');
+}
+function textoMotoristas(r) {
+  if (!r.quantidade) return 'Nenhum motorista cadastrado.';
+  return [`**${r.quantidade} motoristas**`, ...r.itens.map((m) => `- ${m.nome_nas_cargas} (${m.funcionario})${m.placa_atual ? ` · ${m.placa_atual}` : ''}`)].join('\n');
+}
+function textoDRE(r) {
+  const linhas = r.linhas.filter((l) => l.tipo !== 'item');
+  return [`**DRE — ${r.periodo}**`, ...linhas.map((l) => `- ${l.linha}: **${brl(l.valor)}**${l.percentual_da_receita_liquida !== null ? ` (${String(l.percentual_da_receita_liquida).replace('.', ',')}%)` : ''}`),
+    ...(r.avisos || []).map((a) => `- _${a}_`), 'Veja completa em Relatórios › DRE.'].join('\n');
+}
+function textoDespesas(r, mes) {
+  if (!r.total_encontrado) return `Não há despesas lançadas em ${nomeMes(mes)}.`;
+  return [`**Despesas de ${nomeMes(mes)}: ${brl(r.valor_total)}**${r.pendente ? ` (pendente ${brl(r.pendente)})` : ''}`,
+    ...r.por_categoria.map((c) => `- ${c.categoria}: ${brl(c.valor)}`)].join('\n');
+}
+
+// Nome de cliente que aparece na pergunta ("fretes do KNIES")
+async function clienteCitado(empresaId, texto) {
+  const t = texto.replace(/[^a-z0-9]+/g, ' ');
+  const { rows } = await query('SELECT nome FROM clientes WHERE empresa_id = $1 AND ativo', [empresaId]);
+  const achado = rows.map((r) => r.nome).sort((a, b) => b.length - a.length)
+    .find((nome) => { const n = semAcento(nome).replace(/[^a-z0-9]+/g, ' ').trim(); return n.length >= 3 && ` ${t} `.includes(` ${n} `); });
+  return achado || null;
+}
+
+function formatarFretes(r, mes, cliente) {
+  const de = `${cliente ? `de ${cliente} ` : ''}em ${nomeMes(mes)}`;
+  if (!r.total_encontrado) return `Não há fretes lançados ${de}.`;
+  const linhas = r.fretes.slice(0, 10).map((f) => `- Nº ${f.numero_carga} (${f.data.split('-').reverse().join('/')}): ${f.cliente}${f.destino ? ` → ${f.destino}` : ''}, ${ton(f.toneladas)}, ${brl(f.valor_total)} · ${f.situacao}`);
+  return [`**${r.total_encontrado} frete${r.total_encontrado === 1 ? '' : 's'} ${de}: ${ton(r.toneladas_total)}, ${brl(r.valor_total)}**`,
+    ...linhas, r.total_encontrado > 10 ? `- … e mais ${r.total_encontrado - 10}` : '', r.a_receber ? `A receber: **${brl(r.a_receber)}**` : ''].filter(Boolean).join('\n');
 }
 
 function formatarViagens(r, busca) {

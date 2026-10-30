@@ -11,6 +11,9 @@
 --  Rode só se não houver dados que você precise manter.
 -- =====================================================================
 
+-- O arquivo está em UTF-8 (acentos): no Windows o psql lê em WIN1252 se não avisar
+SET client_encoding = 'UTF8';
+
 BEGIN;
 
 -- ---------------------------------------------------------------------
@@ -1052,3 +1055,103 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- DRE (mesmo conteúdo de migracao_dre.sql)
+-- =====================================================================
+ALTER TABLE categorias_despesa ADD COLUMN IF NOT EXISTS grupo_dre VARCHAR(20);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_categoria_grupo_dre') THEN
+        ALTER TABLE categorias_despesa ADD CONSTRAINT ck_categoria_grupo_dre CHECK (grupo_dre IS NULL OR grupo_dre IN
+            ('custo', 'pessoal', 'administrativa', 'comercial', 'financeira', 'impostos', 'ir_csll', 'nao_entra'));
+    END IF;
+END $$;
+
+-- Sugestão pelo nome (só onde ainda não foi escolhido)
+CREATE OR REPLACE FUNCTION fn_grupo_dre_sugerido(p_nome TEXT) RETURNS VARCHAR AS $$
+DECLARE n TEXT := lower(translate(p_nome, 'ÁÀÂÃÉÊÍÓÔÕÚÇáàâãéêíóôõúç', 'AAAAEEIOOOUCaaaaeeiooouc'));
+BEGIN
+    IF n ~ '(pagamento de (floresta|empreiteiro)|adiantamento|transferencia entre|retirada|pro.?labore|distribuicao de lucro)' THEN RETURN 'nao_entra'; END IF;
+    IF n ~ '(irpj|csll|imposto de renda)' THEN RETURN 'ir_csll'; END IF;
+    IF n ~ '(imposto|das\M|simples|icms|iss\M|pis|cofins|tributo|taxa municipal)' THEN RETURN 'impostos'; END IF;
+    IF n ~ '(juro|tarifa|banc|financ|iof|multa)' THEN RETURN 'financeira'; END IF;
+    IF n ~ '(folha|salario|ferias|13|inss|fgts|vale|alimentacao|pessoal|rescis)' THEN RETURN 'pessoal'; END IF;
+    IF n ~ '(combust|diesel|posto|manuten|pneu|pecas|oleo|frete|pedagio|motosserra|caminh)' THEN RETURN 'custo'; END IF;
+    IF n ~ '(propaganda|marketing|comissao de venda|brinde)' THEN RETURN 'comercial'; END IF;
+    RETURN 'administrativa';
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+UPDATE categorias_despesa SET grupo_dre = fn_grupo_dre_sugerido(nome) WHERE grupo_dre IS NULL;
+
+-- Categoria nova (empresa nova ou criada na tela): já nasce com a sugestão
+CREATE OR REPLACE FUNCTION fn_categoria_grupo_dre() RETURNS trigger AS $$
+BEGIN
+    IF NEW.grupo_dre IS NULL THEN NEW.grupo_dre := fn_grupo_dre_sugerido(NEW.nome); END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS tg_categoria_grupo_dre ON categorias_despesa;
+CREATE TRIGGER tg_categoria_grupo_dre BEFORE INSERT ON categorias_despesa
+    FOR EACH ROW EXECUTE FUNCTION fn_categoria_grupo_dre();
+
+-- Dados fiscais da empresa (para a DRE)
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS regime_tributario VARCHAR(20);
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS aliquota_receita  NUMERIC(6, 3) NOT NULL DEFAULT 0;  -- % sobre a receita bruta (DAS, PIS/COFINS, ICMS, ISS)
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS aliquota_ir_csll  NUMERIC(6, 3) NOT NULL DEFAULT 0;  -- % de IRPJ + CSLL
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS base_ir_csll      VARCHAR(10) NOT NULL DEFAULT 'lucro'; -- 'lucro' (Real) ou 'receita' (Presumido)
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_empresa_regime') THEN
+        ALTER TABLE empresas ADD CONSTRAINT ck_empresa_regime CHECK (regime_tributario IS NULL OR regime_tributario IN ('mei', 'simples', 'presumido', 'real', 'outro'));
+        ALTER TABLE empresas ADD CONSTRAINT ck_empresa_aliquotas CHECK (aliquota_receita BETWEEN 0 AND 100 AND aliquota_ir_csll BETWEEN 0 AND 100);
+        ALTER TABLE empresas ADD CONSTRAINT ck_empresa_base_ir CHECK (base_ir_csll IN ('lucro', 'receita'));
+    END IF;
+END $$;
+
+-- =====================================================================
+-- PLACA DO MOTORISTA (migracao_placa_motorista.sql): cada motorista dirige
+-- sempre o mesmo caminhão; no ticket vem só o 1º nome, a placa diz quem é.
+-- =====================================================================
+ALTER TABLE motoristas ADD COLUMN IF NOT EXISTS placa VARCHAR(7);
+CREATE INDEX IF NOT EXISTS ix_motorista_placa ON motoristas (empresa_id, placa);
+
+-- =====================================================================
+-- HISTÓRICO DE PLACAS DO MOTORISTA (migracao_placas_historico.sql):
+-- cada placa vale de "desde" até "ate"; motoristas.placa = a atual.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS motorista_placas (
+    id           SERIAL PRIMARY KEY,
+    empresa_id   INT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+    motorista_id INT NOT NULL REFERENCES motoristas(id) ON DELETE CASCADE,
+    placa        VARCHAR(7) NOT NULL,
+    desde        DATE,
+    ate          DATE,
+    created_at   TIMESTAMP NOT NULL DEFAULT now(),
+    CONSTRAINT ck_placa_periodo CHECK (desde IS NULL OR ate IS NULL OR ate >= desde)
+);
+CREATE INDEX IF NOT EXISTS ix_motorista_placas_placa ON motorista_placas (empresa_id, placa);
+CREATE INDEX IF NOT EXISTS ix_motorista_placas_motorista ON motorista_placas (motorista_id);
+
+-- =====================================================================
+-- PAINEL DO DESENVOLVEDOR: histórico e lixeira (migracao_dev_equipe.sql)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS dev_historico (
+    id          SERIAL PRIMARY KEY,
+    dev_id      INT REFERENCES desenvolvedores(id) ON DELETE SET NULL,
+    dev_nome    VARCHAR(100),
+    acao        VARCHAR(200) NOT NULL,
+    area        VARCHAR(30) NOT NULL,
+    detalhe     JSONB,
+    ip          VARCHAR(60),
+    data_hora   TIMESTAMP NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_dev_historico_data ON dev_historico (data_hora DESC);
+CREATE TABLE IF NOT EXISTS dev_lixeira (
+    id           SERIAL PRIMARY KEY,
+    tipo         VARCHAR(30) NOT NULL,
+    resumo       VARCHAR(200) NOT NULL,
+    dados        JSONB NOT NULL,
+    motivo       VARCHAR(200),
+    excluido_por INT REFERENCES desenvolvedores(id) ON DELETE SET NULL,
+    excluido_em  TIMESTAMP NOT NULL DEFAULT now()
+);

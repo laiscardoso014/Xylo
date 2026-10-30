@@ -3,7 +3,7 @@
 //   1. Menu do celular
 //   2. Máscaras de WhatsApp e CNPJ
 //   3. Envio do formulário "Solicitar acesso" para a API
-//   4. Gráfico interativo da abertura
+//   4. Demonstração da abertura (ticket -> viagem lançada)
 // Depende do comum.js (máscaras e requisicao).
 // =====================================================================
 
@@ -82,138 +82,82 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =====================================================================
-// 4. Painel de demonstração da abertura (gráfico interativo)
-//    Dados ILUSTRATIVOS: nenhum número real de cliente aparece no site.
-//    O faturamento é calculado a partir das toneladas de cada classe,
-//    (peso x preço por tonelada), como o sistema faz em cada viagem.
+// 4. Demonstração da abertura: o ticket da balança vira a viagem lançada
+//    Dados FICTÍCIOS. As contas são as mesmas do sistema:
+//    peso x valor da tonelada (venda, floresta, empreiteiro) e a sobra.
 // =====================================================================
-(function painelDemonstracao() {
-  const painel = document.getElementById('demo-painel');
-  if (!painel) return;
+(function demonstracaoTicket() {
+  const demo = document.getElementById('demo-ticket');
+  if (!demo) return;
+  const ano = document.getElementById('ano');
+  if (ano) ano.textContent = new Date().getFullYear();
 
-  // Preço de exemplo por tonelada, por classe
-  const CLASSES = [
-    { nome: 'Fina',   preco: 220, cor: '#86efac' },
-    { nome: 'Média',  preco: 340, cor: '#22c55e' },
-    { nome: 'Grossa', preco: 460, cor: '#15803d' },
-    { nome: 'Lixo',   preco: 90,  cor: '#a3a3a3' },
+  const EXEMPLOS = [
+    { balanca: 'SERRARIA VALE VERDE', ticket: '36627', data: '29/01/2026 14:12', placa: 'QJX-1D23', apelido: 'ODAIR', motorista: 'Odair Souza',
+      produto: 'PINUS GROSSA', classe: 'Grossa', bruto: 64320, tara: 17530, venda: 280, floresta: 95, empreiteiro: 45 },
+    { balanca: 'MADEIREIRA SÃO JORGE', ticket: '36841', data: '30/01/2026 09:47', placa: 'RLP-6F76', apelido: 'JOAO', motorista: 'João Pereira',
+      produto: 'PINUS FINA', classe: 'Fina', bruto: 52140, tara: 16900, venda: 190, floresta: 70, empreiteiro: 38 },
+    { balanca: 'LAMINADOS SERRA ALTA', ticket: '2291', data: '31/01/2026 16:05', placa: 'MIL-4B67', apelido: 'MARQUINHO', motorista: 'Marcos Lima',
+      produto: 'EUCALIPTO', classe: 'Eucalipto', bruto: 58900, tara: 17200, venda: 230, floresta: 85, empreiteiro: 0 },
   ];
+  const kg = (n) => `${n.toLocaleString('pt-BR')} kg`;
+  const reais = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const $id = (id) => document.getElementById(id);
+  const movimento = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const linhasLidas = ['ticket', 'data', 'placa', 'motorista', 'produto', 'peso'].map((c) => demo.querySelector(`[data-campo="${c}"]`));
+  let atual = 0;
+  let tempos = [];
 
-  // Toneladas por classe em cada mês (Fina, Média, Grossa, Lixo)
-  const MESES = [
-    { curto: 'Ago', longo: 'Agosto/2025',   ton: [560, 450, 290, 180] },
-    { curto: 'Set', longo: 'Setembro/2025', ton: [610, 480, 320, 200] },
-    { curto: 'Out', longo: 'Outubro/2025',  ton: [585, 470, 300, 200] },
-    { curto: 'Nov', longo: 'Novembro/2025', ton: [640, 520, 350, 210] },
-    { curto: 'Dez', longo: 'Dezembro/2025', ton: [520, 420, 270, 185] },
-    { curto: 'Jan', longo: 'Janeiro/2026',  ton: [690, 550, 370, 220] },
-  ].map((m) => {
-    const valores = m.ton.map((t, i) => t * CLASSES[i].preco);
-    const totalTon = m.ton.reduce((a, b) => a + b, 0);
-    return {
-      ...m,
-      valores,
-      totalTon,
-      totalValor: valores.reduce((a, b) => a + b, 0),
-      viagens: Math.round(totalTon / 35), // ~35 t por carga
-    };
-  });
-
-  const fmtTon = (t) => `${t.toLocaleString('pt-BR')} t`;
-  const fmtMil = (v) => `R$ ${(v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: v >= 100000 ? 0 : 1 })} mil`;
-  const fmtValor = (metrica, ton, valor) => (metrica === 'ton' ? fmtTon(ton) : fmtMil(valor));
-
-  const barras = document.getElementById('demo-barras');
-  const dica = document.getElementById('demo-dica');
-  const lista = document.getElementById('demo-classes');
-  const abas = painel.querySelectorAll('.demo-abas button');
-  const animar = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  let metrica = 'ton';
-  let selecionado = MESES.length - 1; // começa no mês mais recente
-
-  // Cria uma barra (botão) por mês
-  barras.innerHTML = MESES.map((m, i) =>
-    `<li><button type="button" class="demo-barra" data-i="${i}" data-mes="${m.curto}" aria-pressed="false"></button></li>`
-  ).join('');
-  const botoes = [...barras.querySelectorAll('.demo-barra')];
-
-  // Cria as linhas do detalhe por classe
-  lista.innerHTML = CLASSES.map((c) =>
-    `<li><span class="nome">${c.nome}</span>
-         <span class="trilho"><span class="preenche" style="background:${c.cor}"></span></span>
-         <span class="valor">–</span></li>`
-  ).join('');
-  const linhas = [...lista.querySelectorAll('li')];
-
-  function desenharBarras() {
-    const valores = MESES.map((m) => (metrica === 'ton' ? m.totalTon : m.totalValor));
-    const maximo = Math.max(...valores) * 1.08; // folga no topo
-    botoes.forEach((b, i) => {
-      const m = MESES[i];
-      b.style.height = `${(valores[i] / maximo) * 100}%`;
-      b.setAttribute('aria-label', `${m.longo}: ${fmtValor(metrica, m.totalTon, m.totalValor)}`);
-    });
+  function preencher(e) {
+    const liquido = e.bruto - e.tara;
+    const t = liquido / 1000;
+    const venda = t * e.venda; const floresta = t * e.floresta; const emp = t * e.empreiteiro;
+    const sobra = venda - floresta - emp;
+    $id('tk-balanca').textContent = e.balanca;
+    $id('tk-numero').textContent = e.ticket;
+    $id('tk-data').textContent = e.data;
+    $id('tk-placa').textContent = e.placa;
+    $id('tk-motorista').textContent = e.apelido;
+    $id('tk-produto').textContent = e.produto;
+    $id('tk-bruto').textContent = kg(e.bruto);
+    $id('tk-tara').textContent = kg(e.tara);
+    $id('tk-liquido').textContent = kg(liquido);
+    $id('lc-motorista').innerHTML = `${e.motorista} <small>pela placa ${e.placa.replace('-', '')}</small>`;
+    $id('lc-classe').textContent = e.classe;
+    $id('lc-peso').textContent = `${t.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} t`;
+    $id('lc-venda').textContent = reais(venda);
+    $id('lc-floresta').textContent = reais(floresta);
+    $id('lc-empreiteiro').textContent = emp ? reais(emp) : 'sem empreiteiro';
+    $id('lc-sobra').textContent = reais(sobra);
+    const [pf, pe, ps] = demo.querySelectorAll('.parte');
+    pf.style.setProperty('--p', `${(floresta / venda) * 100}%`);
+    pe.style.setProperty('--p', `${(emp / venda) * 100}%`);
+    ps.style.setProperty('--p', `${(sobra / venda) * 100}%`);
   }
 
-  function mostrarMes(i) {
-    selecionado = i;
-    const m = MESES[i];
-    botoes.forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
-    document.getElementById('demo-mes').textContent = m.longo;
-    document.getElementById('demo-kpi-ton').textContent = fmtTon(m.totalTon);
-    document.getElementById('demo-kpi-valor').textContent = fmtMil(m.totalValor);
-    document.getElementById('demo-kpi-viagens').textContent = m.viagens;
-
-    // Detalhe por classe, no indicador escolhido
-    const partes = metrica === 'ton' ? m.ton : m.valores;
-    const maior = Math.max(...partes);
-    linhas.forEach((li, k) => {
-      li.querySelector('.preenche').style.width = `${(partes[k] / maior) * 100}%`;
-      li.querySelector('.valor').textContent = fmtValor(metrica, m.ton[k], m.valores[k]);
-    });
+  function ler() {
+    tempos.forEach(clearTimeout); tempos = [];
+    preencher(EXEMPLOS[atual]);
+    if (!movimento) return;
+    demo.classList.add('antes');
+    demo.classList.remove('lendo');
+    linhasLidas.forEach((l) => l.classList.remove('lido'));
+    void demo.offsetWidth; // reinicia a animação do feixe
+    demo.classList.add('lendo');
+    linhasLidas.forEach((l, i) => tempos.push(setTimeout(() => l.classList.add('lido'), 250 + i * 190)));
+    tempos.push(setTimeout(() => demo.classList.remove('antes'), 1500));
+    tempos.push(setTimeout(() => linhasLidas.forEach((l) => l.classList.remove('lido')), 3200));
   }
 
-  // Dica flutuante (mouse e teclado)
-  function mostrarDica(botao) {
-    const m = MESES[botao.dataset.i];
-    dica.textContent = `${m.curto}: ${fmtValor(metrica, m.totalTon, m.totalValor)}`;
-    dica.hidden = false;
-    const caixa = barras.getBoundingClientRect();
-    const b = botao.getBoundingClientRect();
-    let x = b.left - caixa.left + b.width / 2;
-    x = Math.max(dica.offsetWidth / 2, Math.min(caixa.width - dica.offsetWidth / 2, x)); // não sai do painel
-    dica.style.left = `${x}px`;
-    dica.style.top = `${b.top - caixa.top}px`;
-  }
-  const esconderDica = () => { dica.hidden = true; };
+  $id('demo-outro').addEventListener('click', () => { atual = (atual + 1) % EXEMPLOS.length; ler(); });
 
-  botoes.forEach((b) => {
-    b.addEventListener('mouseenter', () => mostrarDica(b));
-    b.addEventListener('focus', () => mostrarDica(b));
-    b.addEventListener('mouseleave', esconderDica);
-    b.addEventListener('blur', esconderDica);
-    b.addEventListener('click', () => { mostrarMes(Number(b.dataset.i)); mostrarDica(b); });
-  });
-
-  abas.forEach((aba) => aba.addEventListener('click', () => {
-    metrica = aba.dataset.metrica;
-    abas.forEach((a) => a.setAttribute('aria-pressed', String(a === aba)));
-    desenharBarras();
-    mostrarMes(selecionado);
-  }));
-
-  // Começa com as barras em zero e "cresce" quando o painel aparece
-  mostrarMes(selecionado);
-  if (animar && 'IntersectionObserver' in window) {
+  // Lê o primeiro ticket quando a demonstração aparece na tela
+  preencher(EXEMPLOS[0]);
+  if (movimento && 'IntersectionObserver' in window) {
+    demo.classList.add('antes');
     const obs = new IntersectionObserver((entradas) => {
-      if (entradas.some((e) => e.isIntersecting)) {
-        requestAnimationFrame(desenharBarras);
-        obs.disconnect();
-      }
-    }, { threshold: 0.3 });
-    obs.observe(painel);
-  } else {
-    desenharBarras();
+      if (entradas.some((e) => e.isIntersecting)) { obs.disconnect(); setTimeout(ler, 350); }
+    }, { threshold: 0.35 });
+    obs.observe(demo);
   }
 })();

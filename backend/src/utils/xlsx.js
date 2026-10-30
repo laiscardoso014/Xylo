@@ -106,7 +106,20 @@ const E = {
   padrao: 0, titulo: 1, subtitulo: 2, cabecalho: 3,
   texto: 4, inteiro: 5, decimal: 6, moeda: 7, data: 8, percentual: 9,
   totTexto: 10, totInteiro: 11, totDecimal: 12, totMoeda: 13, totPercentual: 14,
+  // linhas de demonstrativo (DRE): título de grupo, resultado final e itens recuados
+  grpTexto: 15, grpMoeda: 16, grpPercentual: 17, resTexto: 18, resMoeda: 19, resPercentual: 20,
+  item1: 21, item2: 22, item2Moeda: 23, item2Percentual: 24,
 };
+// Estilo da célula conforme o destaque da linha (l._estilo) e o formato da coluna
+function estiloDaLinha(destaque, formato, coluna) {
+  const num = formato === 'percentual' ? 'Percentual' : ['moeda', 'decimal', 'inteiro'].includes(formato) ? 'Moeda' : 'Texto';
+  if (destaque === 'grupo') return E[`grp${num}`] ?? E.grpTexto;
+  if (destaque === 'subtotal') return E[`tot${num}`] ?? E.totTexto;
+  if (destaque === 'resultado') return E[`res${num}`] ?? E.resTexto;
+  if (destaque === 'detalhe') return coluna === 0 ? E.item2 : num === 'Percentual' ? E.item2Percentual : num === 'Moeda' ? E.item2Moeda : E.texto;
+  if (destaque === 'item' && coluna === 0) return E.item1;
+  return null;
+}
 const ESTILO_DO_FORMATO = { texto: 'texto', inteiro: 'inteiro', decimal: 'decimal', moeda: 'moeda', data: 'data', percentual: 'percentual' };
 const ESTILO_TOTAL = { texto: 'totTexto', inteiro: 'totInteiro', decimal: 'totDecimal', moeda: 'totMoeda', data: 'totTexto', percentual: 'totPercentual' };
 
@@ -118,18 +131,20 @@ const ESTILOS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <numFmt numFmtId="166" formatCode="0.0%"/>
 <numFmt numFmtId="167" formatCode="#,##0.00"/>
 </numFmts>
-<fonts count="5">
+<fonts count="6">
 <font><sz val="11"/><name val="Calibri"/><family val="2"/></font>
 <font><b/><sz val="15"/><color rgb="FF14532D"/><name val="Calibri"/><family val="2"/></font>
 <font><sz val="10"/><color rgb="FF6B7280"/><name val="Calibri"/><family val="2"/></font>
 <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/><family val="2"/></font>
 <font><b/><sz val="11"/><name val="Calibri"/><family val="2"/></font>
+<font><sz val="10"/><color rgb="FF4B5563"/><name val="Calibri"/><family val="2"/></font>
 </fonts>
-<fills count="4">
+<fills count="5">
 <fill><patternFill patternType="none"/></fill>
 <fill><patternFill patternType="gray125"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FF166534"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFF0FDF4"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFF3F4F6"/><bgColor indexed="64"/></patternFill></fill>
 </fills>
 <borders count="3">
 <border><left/><right/><top/><bottom/><diagonal/></border>
@@ -137,7 +152,7 @@ const ESTILOS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <border><left/><right/><top style="medium"><color rgb="FF166534"/></top><bottom style="medium"><color rgb="FF166534"/></bottom><diagonal/></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="15">
+<cellXfs count="25">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
@@ -153,6 +168,16 @@ const ESTILOS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <xf numFmtId="167" fontId="4" fillId="3" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
 <xf numFmtId="164" fontId="4" fillId="3" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
 <xf numFmtId="166" fontId="4" fillId="3" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
+<xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+<xf numFmtId="164" fontId="4" fillId="4" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
+<xf numFmtId="166" fontId="4" fillId="4" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
+<xf numFmtId="0" fontId="3" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+<xf numFmtId="164" fontId="3" fillId="2" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
+<xf numFmtId="166" fontId="3" fillId="2" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment indent="1"/></xf>
+<xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment indent="3"/></xf>
+<xf numFmtId="164" fontId="5" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>
+<xf numFmtId="166" fontId="5" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -190,8 +215,11 @@ function novaPasta() {
   const abas = [];
   return {
     // colunas: [{ titulo, campo|valor(linha), formato: texto|inteiro|decimal|moeda|data|percentual, largura, total: 'soma'|'texto'|valor }]
-    aba(nome, { titulo, subtitulo, logo, colunas, linhas, total = false, notas = [] }) {
-      abas.push({ nome: String(nome).replace(/[\\/?*[\]:]/g, ' ').slice(0, 31), titulo, subtitulo, logo: lerLogo(logo), colunas, linhas, total, notas });
+    // filtro: false tira o filtro do cabeçalho · rodape: [textos] depois da tabela · paisagem: false = retrato
+    // Linha com l._estilo ('grupo'|'subtotal'|'resultado'|'item'|'detalhe') ganha o destaque de demonstrativo.
+    // Fórmula com {L3} = a célula da MESMA coluna na 4ª linha de dados (contando do 0); {B:L3} = da coluna B.
+    aba(nome, { titulo, subtitulo, logo, colunas, linhas, total = false, notas = [], filtro = true, rodape = [], paisagem = true }) {
+      abas.push({ nome: String(nome).replace(/[\\/?*[\]:]/g, ' ').slice(0, 31), titulo, subtitulo, logo: lerLogo(logo), colunas, linhas, total, notas, filtro, rodape, paisagem });
       return this;
     },
     gerar() {
@@ -230,9 +258,12 @@ function novaPasta() {
           const cels = a.colunas.map((c, j) => {
             let v = c.valor ? c.valor(l) : l[c.campo];
             const formato = c.formato || 'texto';
-            if (v !== null && v !== undefined && v !== '' && formato === 'data') v = serialData(v);
+            if (v && typeof v === 'object' && typeof v.formula === 'string') {
+              v = { ...v, formula: v.formula.replace(/\{(?:([A-Z]{1,3}):)?L(\d+)\}/g, (_, col, k) => `${col || letra(j)}${primeiraDado + Number(k)}`) };
+            } else if (v !== null && v !== undefined && v !== '' && formato === 'data') v = serialData(v);
             else if (['inteiro', 'decimal', 'moeda', 'percentual'].includes(formato) && v !== null && v !== '' && v !== undefined) v = Number(v);
-            return celula(`${letra(j)}${r}`, v, E[ESTILO_DO_FORMATO[formato]]);
+            const estilo = estiloDaLinha(l._estilo, formato, j) ?? E[ESTILO_DO_FORMATO[formato]];
+            return celula(`${letra(j)}${r}`, v, estilo);
           }).join('');
           linhasXml.push(`<row r="${r}">${cels}</row>`);
           r++;
@@ -251,9 +282,19 @@ function novaPasta() {
             return celula(ref, c.total ?? '', estilo);
           }).join('');
           linhasXml.push(`<row r="${r}" ht="20" customHeight="1">${cels}</row>`);
+          r++;
+        }
+        // textos depois da tabela (notas, assinaturas)
+        if (a.rodape.length) {
+          r++;
+          for (const texto of a.rodape) {
+            linhasXml.push(`<row r="${r}">${celula(`A${r}`, texto, E.subtitulo)}</row>`);
+            if (nCol > 1) mesclas.push(`A${r}:${letra(nCol - 1)}${r}`);
+            r++;
+          }
         }
         const cols = a.colunas.map((c, j) => `<col min="${j + 1}" max="${j + 1}" width="${c.largura || 14}" customWidth="1"/>`).join('');
-        const filtro = a.linhas.length ? `<autoFilter ref="A${linhaCab}:${letra(nCol - 1)}${ultimaDado}"/>` : '';
+        const filtro = a.filtro && a.linhas.length ? `<autoFilter ref="A${linhaCab}:${letra(nCol - 1)}${ultimaDado}"/>` : '';
         let desenho = '';
         if (a.logo) {
           imagens++;
@@ -286,7 +327,7 @@ function novaPasta() {
 <sheetData>${linhasXml.join('')}</sheetData>
 ${filtro}${mesclas.length ? `<mergeCells count="${mesclas.length}">${mesclas.map((m) => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>` : ''}
 <pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>
-<pageSetup paperSize="9" orientation="landscape" fitToHeight="0"/>
+<pageSetup paperSize="9" orientation="${a.paisagem ? 'landscape' : 'portrait'}" fitToHeight="0"/>
 ${desenho}
 </worksheet>`;
       });
@@ -421,4 +462,4 @@ function lerPasta(buffer) {
   return { abas };
 }
 
-module.exports = { novaPasta, lerPasta, serialData };
+module.exports = { novaPasta, lerPasta, serialData, letra };

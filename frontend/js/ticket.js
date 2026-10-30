@@ -17,7 +17,7 @@ let statusTicket = null; // { foto: true|false } - a leitura por foto depende da
 
 // Reduz a foto do celular (3-5 MB) para ~300 KB antes de enviar:
 // mais rápido no 4G e dentro do limite das IAs grátis.
-async function reduzirImagem(arquivo, lado = 2000) {
+async function reduzirImagem(arquivo, lado = 1600) {
   const url = URL.createObjectURL(arquivo);
   try {
     const img = await new Promise((ok, falha) => {
