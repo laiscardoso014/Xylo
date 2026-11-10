@@ -1,3 +1,7 @@
 node_modules/
 .env
 *.log
+# pacote gerado pelo aws/empacotar.ps1 (não versionar)
+aws/*.zip
+# backups baixados do S3 (têm dados dos clientes)
+*.json.gz

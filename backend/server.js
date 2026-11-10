@@ -30,7 +30,7 @@ app.listen(PORT, (erro) => {
   const email = emailConfigurado();
   console.log(email
     ? `✉  E-mail: envia por ${email.host}:${email.porta} como ${email.endereco}`
-    : '✉  E-mail: modo teste (sem EMAIL_* no .env) - os links de confirmação aparecem aqui no console');
+    : '✉  E-mail: sem envio (Brevo não configurada) - os links de ativação aparecem na tela do painel e aqui no log');
   console.log(require('./src/assistente/provedores').resumoIA());
   iniciarAgendador(); // faturas da mensalidade: geração automática (se ligada no painel)
 });

@@ -63,6 +63,14 @@ async function conferirBanco() {
     }
   } catch (err) {
     console.error('Não consegui conferir o banco de dados:', err.message);
+    const dica = {
+      '28P01': 'A SENHA do CONNECTION_STRING está errada. Copie o texto de novo no Neon (Connect, sem "pooling") e cole em Render > Environment.',
+      '3D000': 'O nome do banco no CONNECTION_STRING não existe.',
+      ENOTFOUND: 'O endereço do banco no CONNECTION_STRING está errado (confira o texto copiado).',
+      ECONNREFUSED: 'O banco não está aceitando conexão (no computador: o PostgreSQL está ligado?).',
+    }[err.code];
+    if (dica) console.error(`   → ${dica}`);
+    if (!process.env.CONNECTION_STRING) console.error('   → Falta a variável CONNECTION_STRING.');
   }
   return pendentes;
 }

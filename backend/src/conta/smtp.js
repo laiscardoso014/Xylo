@@ -36,6 +36,10 @@ function configuracao() {
     return { tipo: 'brevo', chave: e.EMAIL_BREVO_CHAVE.trim(), remetente, endereco, nome: nome.replace(/"/g, ''), host: 'api.brevo.com', porta: 443 };
   }
   if (!e.EMAIL_SMTP_HOST || !e.EMAIL_USUARIO || !e.EMAIL_SENHA) return null;
+  // e-mail de exemplo do .env.example: não está configurado de verdade
+  if (/^suaconta@|@exemplo\./i.test(e.EMAIL_USUARIO.trim())) return null;
+  // No Render grátis o SMTP é bloqueado: sem Brevo, fica no modo sem e-mail (o link aparece na tela)
+  if (e.RENDER && !e.EMAIL_SMTP_FORCAR) return null;
   const porta = Number(e.EMAIL_SMTP_PORTA) || 465;
   const seguranca = (e.EMAIL_SMTP_SEGURANCA || (porta === 465 ? 'ssl' : 'starttls')).toLowerCase();
   const remetente = e.EMAIL_REMETENTE || `Xylo <${e.EMAIL_USUARIO}>`;

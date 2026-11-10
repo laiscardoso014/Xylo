@@ -1,8 +1,27 @@
 const { Pool } = require('pg');
 const { AsyncLocalStorage } = require('async_hooks');
 
-// CONNECTION_STRING vem do arquivo .env (carregado no server.js)
-const pool = new Pool({ connectionString: process.env.CONNECTION_STRING });
+// CONNECTION_STRING vem do arquivo .env (no computador) ou das variáveis do Render (na web).
+// Arruma os erros comuns de colar o texto: espaços e aspas em volta, e banco
+// na nuvem (Neon) sem SSL. "sslmode=require" vira "verify-full", que é o que o
+// driver já faz hoje (e tira o aviso "SECURITY WARNING" do log).
+function conexao(texto) {
+  let s = String(texto || '').trim().replace(/^['"]+|['"]+$/g, '').trim();
+  if (!s) return s;
+  const local = /@(localhost|127\.0\.0\.1|\[::1\])(:|\/)/i.test(s);
+  if (!local) {
+    if (/[?&]sslmode=/i.test(s)) s = s.replace(/([?&]sslmode=)(require|prefer|verify-ca)\b/i, '$1verify-full');
+    else s += `${s.includes('?') ? '&' : '?'}sslmode=verify-full`;
+  }
+  return s;
+}
+// Na AWS Lambda cada contêiner atende 1 pedido por vez: poucas conexões bastam
+// (PG_POOL_MAX=3) e evita estourar o limite de conexões do Neon.
+const pool = new Pool({
+  connectionString: conexao(process.env.CONNECTION_STRING),
+  max: Number(process.env.PG_POOL_MAX) || 10,
+  idleTimeoutMillis: process.env.AWS_LAMBDA_FUNCTION_NAME ? 20e3 : 30e3,
+});
 
 pool.on('error', (err) => {
   console.error('Erro inesperado no banco:', err.message);

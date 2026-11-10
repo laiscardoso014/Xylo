@@ -1,0 +1,27 @@
+=====================================================================
+VARIÁVEIS DO RENDER  (Render > seu serviço > Environment)
+Uma por linha: NAME à esquerda, VALUE à direita. Sem espaço, sem aspas.
+=====================================================================
+
+OBRIGATÓRIAS
+  CONNECTION_STRING   o texto do Neon (Connect, "Connection pooling" DESLIGADO,
+                      sem "-pooler"). Antes de colar, teste no PowerShell:
+                      & "C:\Program Files\PostgreSQL\18\bin\psql.exe" "TEXTO" -c "SELECT 1"
+  JWT_SECRET          um texto longo e aleatório (ex.: xylo-ctech-2026-k8Pq2vLm9ZtR4wYbN3)
+  APP_URL             https://xylo-ns4l.onrender.com   (o endereço que o Render deu)
+  TZ                  America/Sao_Paulo
+
+IA (assistente e leitura de ticket)
+  ASSISTENTE_PROVEDOR       groq
+  ASSISTENTE_CHAVE          a chave do Groq (gsk_...)
+  ASSISTENTE_RESERVA        gemini
+  ASSISTENTE_RESERVA_CHAVE  a chave do Gemini (AIza...)
+
+E-MAIL (opcional - sem elas, os links de ativação aparecem na tela)
+  EMAIL_BREVO_CHAVE   xkeysib-...
+  EMAIL_REMETENTE     Xylo <seu-email-confirmado-na-brevo@gmail.com>
+
+NÃO COLOQUE NO RENDER (apague se estiverem lá)
+  EMAIL_SMTP_HOST, EMAIL_SMTP_PORTA, EMAIL_USUARIO, EMAIL_SENHA, PORT
+
+A versão do Node (22) agora vem do package.json: não precisa de NODE_VERSION.
