@@ -117,9 +117,9 @@ img, svg { display: block; }
 }
 .abertura h1 {
     color: var(--branco);
-    font-size: clamp(40px, 5.4vw, 70px);
-    font-weight: 850; font-stretch: 118%; letter-spacing: -.02em; line-height: 1.0;
-    max-width: 12ch;
+    font-size: clamp(30px, 3.1vw, 42px);
+    font-weight: 800; font-stretch: 115%; letter-spacing: -.015em; line-height: 1.08;
+    max-width: 22ch;
 }
 .abertura-sub { margin-top: 24px; font-size: 18.5px; color: rgba(255, 255, 255, .82); max-width: 54ch; }
 .abertura-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 34px; }
@@ -200,7 +200,7 @@ img, svg { display: block; }
 .secao { max-width: var(--medida); margin: 0 auto; padding: 104px 24px 0; }
 .secao-cabeca { max-width: 760px; margin-bottom: 48px; }
 .secao-cabeca h2, .faixa-dre h2, .contato h2 {
-    font-size: clamp(30px, 3.6vw, 44px); font-weight: 800; font-stretch: 112%; letter-spacing: -.015em;
+    font-size: clamp(26px, 2.8vw, 36px); font-weight: 800; font-stretch: 112%; letter-spacing: -.015em;
 }
 .secao-cabeca p { margin-top: 14px; font-size: 18.5px; color: var(--tinta-suave); }
 
@@ -319,7 +319,7 @@ img, svg { display: block; }
 /* ---------- Telas menores ---------- */
 @media (max-width: 1060px) {
     .abertura { grid-template-columns: 1fr; gap: 48px; padding-top: 56px; }
-    .abertura h1 { max-width: 14ch; }
+    .abertura h1 { max-width: 22ch; }
     .demo { max-width: 640px; }
     .trilha { grid-template-columns: 1fr 1fr; row-gap: 44px; border-top: 0; }
     .etapa { border-top: 3px solid var(--floresta); }
