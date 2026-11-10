@@ -11,6 +11,7 @@
 //   POST /api/dev/empresas                     cadastra empresa sem solicitação
 //   PUT  /api/dev/empresas/:id                 bloquear/desbloquear, editar dados
 //   POST /api/dev/empresas/:id/nova-senha-admin   gera nova senha provisória do admin
+//   DELETE /api/dev/empresas/:id { confirmacao }  apaga a empresa e todos os dados (cadastros de teste)
 //   /api/dev/cobranca/...                      mensalidade: faturas com PIX (devCobranca.routes.js)
 // =====================================================================
 const express = require('express');
@@ -159,6 +160,7 @@ async function descrever(req) {
       if (b.ativo === true && Object.keys(b).length === 1) return `Desbloqueou a empresa ${nome}`;
       return `Editou os dados da empresa ${nome}`;
     }],
+    [/^\/empresas\/\d+$/, 'DELETE', 'empresas', async () => `Excluiu de vez a empresa ${req.resumoAcao || `#${id}`} e todos os dados dela`],
     [/^\/empresas\/\d+\/nova-senha-admin$/, 'POST', 'empresas', async () => `Reenviou o acesso do administrador de ${await nomeDe('empresas', id)}`],
     [/^\/cobranca\/config$/, 'PUT', 'cobranca', async () => 'Alterou os dados de recebimento (PIX)'],
     [/^\/cobranca\/empresas\/\d+$/, 'PUT', 'cobranca', async () => `Alterou a mensalidade de ${await nomeDe('empresas', id)}`],
@@ -453,5 +455,72 @@ router.post('/empresas/:id/nova-senha-admin', [param('id').isInt({ min: 1 })], v
     next(err);
   }
 });
+
+// =====================================================================
+// EXCLUIR EMPRESA DE VEZ   DELETE /api/dev/empresas/:id   { confirmacao: "<CNPJ>" }
+// Para cadastros de teste: apaga a empresa e TUDO dela (usuários, viagens,
+// fretes, despesas, folha, faturas...). Não vai para a lixeira, não tem volta.
+// Só apaga se o CNPJ digitado na confirmação for o da empresa.
+// =====================================================================
+
+// Ordem importa: primeiro quem depende dos outros (há chaves ON DELETE RESTRICT
+// entre as tabelas da empresa, ex.: viagens -> clientes). O que sobrar sai
+// pelo ON DELETE CASCADE de empresas no final.
+const TABELAS_DA_EMPRESA = [
+  'recebimentos', 'fretes', 'adiantamentos', 'folhas', 'comissao_faixas', 'despesas', 'rotas',
+  'viagens', 'tabelas_precos', 'veiculos', 'motorista_placas', 'funcionarios', 'motoristas',
+  'clientes', 'florestas', 'empreiteiros', 'categorias_despesa', 'classes_madeira',
+  'faturas', 'lixeira', 'usuarios', 'auditoria',
+];
+
+router.delete(
+  '/empresas/:id',
+  [
+    param('id').isInt({ min: 1 }),
+    body('confirmacao').customSanitizer(soDigitos).notEmpty().withMessage('Digite o CNPJ da empresa para confirmar.'),
+  ],
+  validar,
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const empresa = (await client.query('SELECT id, nome, cnpj FROM empresas WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!empresa) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ erro: 'Empresa não encontrada.' });
+      }
+      if (soDigitos(empresa.cnpj) !== req.body.confirmacao) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ erro: 'O CNPJ digitado não é o desta empresa. Nada foi apagado.' });
+      }
+
+      const contagem = (await client.query(
+        `SELECT (SELECT COUNT(*) FROM usuarios WHERE empresa_id = $1)::int AS usuarios,
+                (SELECT COUNT(*) FROM viagens  WHERE empresa_id = $1)::int AS viagens`, [empresa.id])).rows[0];
+
+      // Só as tabelas que existem neste banco (depende das migrações rodadas)
+      const existentes = (await client.query(
+        'SELECT t FROM unnest($1::text[]) WITH ORDINALITY AS x(t, ordem) WHERE to_regclass(t) IS NOT NULL ORDER BY ordem',
+        [TABELAS_DA_EMPRESA])).rows.map((r) => r.t);
+      for (const tabela of existentes) {
+        await client.query(`DELETE FROM ${tabela} WHERE empresa_id = $1`, [empresa.id]);
+      }
+
+      // Solicitação que tinha virado esta empresa: sai junto, senão o CNPJ não
+      // pode ser solicitado/aprovado de novo
+      await client.query('DELETE FROM solicitacoes_acesso WHERE empresa_id = $1', [empresa.id]);
+      await client.query('DELETE FROM empresas WHERE id = $1', [empresa.id]);
+      await client.query('COMMIT');
+
+      req.resumoAcao = `${empresa.nome} (CNPJ ${empresa.cnpj}, ${contagem.usuarios} usuário(s), ${contagem.viagens} viagem(ns))`;
+      res.json({ ok: true, empresa: empresa.nome, ...contagem });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
 
 module.exports = router;
