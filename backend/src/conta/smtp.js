@@ -238,7 +238,9 @@ async function conversar(cfg, { para, assunto, texto, html }) {
       }
     } catch (err) {
       if (err.codigoSmtp === 535 || err.codigoSmtp === 534) {
-        throw new Error('O servidor de e-mail recusou o usuário/senha do .env (no Gmail, use uma "senha de app").');
+        // junto vai a resposta do servidor (ex.: Gmail diz se faltou senha de app ou se o login não confere)
+        const doServidor = String(err.message).split(': ').slice(1).join(': ').replace(/\s+/g, ' ').trim();
+        throw new Error(`O servidor de e-mail recusou o usuário/senha do .env (${cfg.usuario}). No Gmail, use uma "senha de app" gerada nesta mesma conta.${doServidor ? ` Resposta do servidor: ${doServidor}` : ''}`);
       }
       throw err;
     }
