@@ -1,4 +1,4 @@
-# =====================================================================
+﻿# =====================================================================
 # Gera o pacote das funções Lambda do Xylo:  C:\Xylo\aws\xylo-lambda.zip
 #
 # Como usar (PowerShell, dentro da pasta C:\Xylo):

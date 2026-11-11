@@ -113,3 +113,11 @@
 .lista-hist-dev .sub { font-size: 12.5px; color: var(--texto-suave); }
 #acoes-usuarios { display: flex; gap: 10px; flex-wrap: wrap; }
 #acoes-usuarios select { padding: 9px 12px; border: 1px solid var(--gray-300); border-radius: 8px; background: var(--superficie); color: var(--texto); }
+
+/* Backup do banco */
+.backup-card { display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px; }
+.backup-card > div { flex: 1; min-width: 260px; }
+.backup-card h3, .card h3 { margin: 0 0 6px; font-size: 16px; }
+.lista-backup { margin: 6px 0 18px; padding-left: 18px; line-height: 1.6; font-size: 14px; }
+.lista-backup li + li { margin-top: 6px; }
+.lista-backup code, .backup-card code, .card .sub code { font-size: 12.5px; background: var(--fundo); border: 1px solid var(--borda); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }

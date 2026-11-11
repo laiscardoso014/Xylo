@@ -19,7 +19,6 @@
 // O banco continua no Neon (PostgreSQL).
 // =====================================================================
 const http = require('http');
-const zlib = require('zlib');
 const path = require('path');
 
 // No computador (para testar) lê o .env; na AWS as variáveis vêm da configuração da função
@@ -127,25 +126,7 @@ async function rotinas() {
 // Restaurar: backend/database/restaurar-backup.js (ver AWS.md).
 // Para testar no computador sem AWS: BACKUP_PASTA_LOCAL=c:\pasta
 // ---------------------------------------------------------------------
-async function gerarBackup() {
-  const { query } = require('./src/config/db');
-  const { rows: tabelas } = await query(
-    `SELECT table_name FROM information_schema.tables
-      WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' ORDER BY table_name`);
-  // Cada tabela fica guardada como o TEXTO JSON exato que o PostgreSQL gerou
-  // (sem passar pelo JavaScript): números como 0.00 e datas voltam idênticos.
-  const dados = {};
-  let linhas = 0;
-  for (const { table_name: t } of tabelas) {
-    const { rows } = await query(`SELECT COALESCE(json_agg(x), '[]')::text AS j, count(*)::int AS n FROM "${t.replace(/"/g, '')}" x`);
-    dados[t] = rows[0].j;
-    linhas += rows[0].n;
-  }
-  const agora = new Date();
-  const dia = agora.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
-  const conteudo = { sistema: 'Xylo', formato: 2, gerado_em: agora.toISOString(), tabelas: dados };
-  return { dia, linhas, tabelas: tabelas.length, gz: zlib.gzipSync(Buffer.from(JSON.stringify(conteudo)), { level: 9 }) };
-}
+const { gerarBackup } = require('./src/utils/backup'); // a "foto" do banco (mesma do painel e do script)
 
 async function backup() {
   const b = await gerarBackup();

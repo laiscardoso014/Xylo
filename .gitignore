@@ -5,3 +5,7 @@ node_modules/
 aws/*.zip
 # backups baixados do S3 (têm dados dos clientes)
 *.json.gz
+# pasta dos backups feitos no computador (database/fazer-backup.js)
+backups/
+# zips do projeto (versões que chegam por download) não vão para o GitHub
+/*.zip

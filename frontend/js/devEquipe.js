@@ -161,7 +161,7 @@ async function telaUsuarios() {
 // ---------------------------------------------------------------------
 // HISTÓRICO DO PAINEL
 // ---------------------------------------------------------------------
-const AREAS_HISTORICO = { acesso: 'Acessos', solicitacoes: 'Solicitações', empresas: 'Empresas', cobranca: 'Cobrança', equipe: 'Equipe', lixeira: 'Lixeira' };
+const AREAS_HISTORICO = { acesso: 'Acessos', solicitacoes: 'Solicitações', empresas: 'Empresas', cobranca: 'Cobrança', equipe: 'Equipe', lixeira: 'Lixeira', backup: 'Backup' };
 const ICONE_AREA = { acesso: 'fa-right-to-bracket', solicitacoes: 'fa-inbox', empresas: 'fa-building', cobranca: 'fa-receipt', equipe: 'fa-user-shield', lixeira: 'fa-trash-can', outros: 'fa-circle' };
 
 async function telaHistorico() {
@@ -260,4 +260,63 @@ async function telaLixeira() {
     }
   };
   carregar();
+}
+
+// =====================================================================
+// BACKUP DO BANCO: baixar uma cópia completa (todas as empresas)
+// =====================================================================
+async function telaBackup() {
+  conteudo.innerHTML = `
+    <p class="nota-tela"><i class="fas fa-shield-halved" aria-hidden="true"></i>
+      <span>O arquivo tem os dados de <strong>todas as empresas</strong> (inclusive os resumos das senhas). Guarde num lugar seguro,
+      como uma pasta só sua no Google Drive, e não envie para ninguém.</span></p>
+    <div class="card backup-card">
+      <div>
+        <h3>Baixar backup agora</h3>
+        <p class="sub">Uma "foto" do banco inteiro neste momento, em um arquivo <code>.json.gz</code>. Faça antes de qualquer mudança grande
+          (atualizar o sistema, rodar uma migração, importar planilha) e pelo menos uma vez por semana.</p>
+        <p class="sub" id="ultimo-backup">Último backup pelo painel: carregando…</p>
+      </div>
+      <button type="button" class="btn btn-primario" id="btn-backup"><i class="fas fa-download"></i> Baixar backup</button>
+    </div>
+    <div class="card">
+      <h3>As outras cópias</h3>
+      <ul class="lista-backup">
+        <li><strong>No seu computador, todo dia:</strong> na pasta <code>backend</code>, rode uma vez
+          <code>powershell -ExecutionPolicy Bypass -File database\\agendar-backup.ps1 -Pasta "G:\\Meu Drive\\Xylo"</code>.
+          O Windows passa a salvar um backup por dia (guarda os últimos 30).</li>
+        <li><strong>Na AWS:</strong> a função <code>xylo-backup</code> grava um backup por dia no S3, às 03:00 (guarda 30 dias).</li>
+        <li><strong>No Neon:</strong> o próprio banco permite voltar a um ponto recente do tempo (painel do Neon › Restore).</li>
+      </ul>
+      <h3>Como restaurar</h3>
+      <p class="sub">Na pasta <code>backend</code>, com o <code>.env</code> apontando para o banco de destino (de preferência um banco novo):<br>
+        <code>node database/restaurar-backup.js caminho\\do\\arquivo.json.gz</code> (só mostra o conteúdo) e depois o mesmo comando com
+        <code>--confirmar</code>. Se der qualquer erro, nada é alterado.</p>
+    </div>`;
+
+  api('/historico?area=backup&dias=365').then((h) => {
+    const u = h[0];
+    $('#ultimo-backup').textContent = u ? `Último backup pelo painel: ${dataHoraBR(u.data_hora)} por ${u.quem}.` : 'Nenhum backup baixado pelo painel ainda.';
+  }).catch(() => { $('#ultimo-backup').textContent = ''; });
+
+  $('#btn-backup').addEventListener('click', async (e) => {
+    const botao = e.currentTarget;
+    botao.disabled = true; botao.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando…';
+    try {
+      const r = await fetch(`${API_URL}/dev/backup`, { method: 'POST', headers: { Authorization: `Bearer ${SessaoDev.token()}` } });
+      if (r.status === 401) { SessaoDev.limpar(); mostrarLogin('Sua sessão expirou. Entre novamente.'); return; }
+      if (!r.ok) throw new Error('Não foi possível gerar o backup. Tente de novo.');
+      const nome = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'xylo-backup.json.gz';
+      const url = URL.createObjectURL(await r.blob());
+      const a = Object.assign(document.createElement('a'), { href: url, download: nome });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      toast(`Backup baixado: ${nome}`);
+      $('#ultimo-backup').textContent = `Último backup pelo painel: agora há pouco (${r.headers.get('X-Backup-Linhas') || '?'} linhas).`;
+    } catch (erro) {
+      toast(erro.message, 'erro');
+    } finally {
+      botao.disabled = false; botao.innerHTML = '<i class="fas fa-download"></i> Baixar backup';
+    }
+  });
 }

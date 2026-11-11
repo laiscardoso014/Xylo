@@ -179,6 +179,7 @@ const TELAS = {
   usuarios: { titulo: 'Usuários', desenhar: telaUsuarios },       // js/devEquipe.js
   historico: { titulo: 'Histórico do painel', desenhar: telaHistorico },
   lixeira: { titulo: 'Lixeira', desenhar: telaLixeira },
+  backup: { titulo: 'Backup do banco', desenhar: telaBackup },     // js/devEquipe.js
 };
 
 function navegar() {

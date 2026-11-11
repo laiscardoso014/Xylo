@@ -14,6 +14,7 @@
 //   GET    /lixeira
 //   POST   /lixeira/:id/restaurar
 //   DELETE /lixeira/:id               apaga de vez
+//   POST   /backup                    baixa o banco INTEIRO (.json.gz), para guardar
 //
 // O registro no histórico é automático (registrarAcao, no dev.routes.js).
 // =====================================================================
@@ -22,6 +23,7 @@ const bcrypt = require('bcryptjs');
 const { body, param, query: q, validationResult } = require('express-validator');
 const { pool, query } = require('../config/db');
 const { fotografar, restaurar: restaurarEmpresa } = require('../utils/copiaEmpresa');
+const { gerarBackup } = require('../utils/backup');
 
 const router = express.Router();
 
@@ -218,6 +220,27 @@ router.delete('/empresas/:id', [
     next(err);
   } finally {
     c.release();
+  }
+});
+
+// =====================================================================
+// BACKUP: baixa uma cópia do banco inteiro (todas as empresas)
+// POST (e não GET) para ficar registrado no Histórico do painel.
+// Restaurar: backend/database/restaurar-backup.js
+// =====================================================================
+router.post('/backup', async (req, res, next) => {
+  try {
+    const b = await gerarBackup();
+    res.set({
+      'Content-Type': 'application/gzip',
+      'Content-Disposition': `attachment; filename="xylo-${b.dia}_${b.hora}.json.gz"`,
+      'Cache-Control': 'no-store',
+      'X-Backup-Linhas': String(b.linhas),
+    });
+    req.resumoAcao = `${b.linhas} linhas, ${b.contagem.empresas || 0} empresa(s)`;
+    res.send(b.gz);
+  } catch (err) {
+    next(err);
   }
 });
 

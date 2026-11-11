@@ -184,6 +184,7 @@ async function descrever(req) {
     [/^\/equipe\/\d+\/senha$/, 'POST', 'equipe', async () => `Definiu uma senha nova para ${await nomeDe('equipe', id)}`],
     [/^\/minha-senha$/, 'PUT', 'equipe', async () => 'Trocou a própria senha'],
     [/^\/lixeira\/\d+\/restaurar$/, 'POST', 'lixeira', async () => `Restaurou da lixeira: ${req.resumoAcao || `#${id}`}`],
+    [/^\/backup$/, 'POST', 'backup', async () => `Baixou um backup completo do banco (${req.resumoAcao || ''})`],
     [/^\/lixeira\/\d+$/, 'DELETE', 'lixeira', async () => `Apagou de vez da lixeira: ${req.resumoAcao || `#${id}`}`],
   ];
   const regra = regras.find(([re, metodo]) => metodo === m && re.test(c));

@@ -34,7 +34,7 @@ app.use(helmet({
 app.use(
   cors({
     origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : true,
-    exposedHeaders: ['Content-Disposition'], // o navegador precisa ver o nome do arquivo baixado
+    exposedHeaders: ['Content-Disposition', 'X-Backup-Linhas'], // o navegador precisa ver o nome do arquivo baixado
   })
 );
 app.use(express.json({ limit: '1mb' })); // 1 MB: cabe a logo da empresa
