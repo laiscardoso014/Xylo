@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260">
+  <rect x="20" y="20" width="220" height="220" rx="52" fill="#123b2c"/><g transform="translate(55.0,55.0) scale(6.25)">
+  <rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="#ffffff" transform="rotate(45 12 12)"/>
+  <rect x="9.9" y="1.6" width="4.2" height="20.8" rx="2.1" fill="#ffffff" opacity="0.72" transform="rotate(-45 12 12)"/>
+  <circle cx="12" cy="12" r="1.5" fill="#3fae74"/></g>
+  <text x="280" y="168" style="font-family:'Inter Display','Inter',sans-serif;font-weight:700;font-size:150px;letter-spacing:-5px" fill="#123b2c">Xylo</text>
+  <text x="286" y="222" style="font-family:'Inter Display','Inter',sans-serif;font-weight:500;font-size:34px;letter-spacing:3px" fill="#5b6b62">GESTÃO DE MADEIRA · CTECH</text></svg>

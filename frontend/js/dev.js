@@ -2,8 +2,7 @@
 // Xylo (CTech) - Painel do Desenvolvedor (dev.html)
 //   - Solicitações vindas do formulário do index.html
 //   - Aprovar: cria a empresa + o Administrador com senha provisória
-//   - Empresas: bloquear/desbloquear, gerar nova senha do administrador e
-//     excluir de vez (cadastros de teste, confirmando com o CNPJ)
+//   - Empresas: bloquear/desbloquear, gerar nova senha do administrador e excluir (vai para a lixeira)
 // Sessão separada da sessão das empresas (chave wc_dev_token).
 // Usa o comum.js ($, esc, toast, modal, máscaras, formatação, requisicao).
 // =====================================================================
@@ -275,6 +274,17 @@ async function telaInicio() {
 // ---------------------------------------------------------------------
 let filtroStatus = 'abertas';
 
+// Regime tributário: vem do formulário do site e já configura os impostos da DRE da empresa
+const REGIMES_DRE = { mei: 'MEI', simples: 'Simples Nacional', presumido: 'Lucro Presumido', real: 'Lucro Real', outro: 'Outro' };
+const REGIME_DO_SITE = { MEI: 'mei', 'Simples Nacional': 'simples', 'Lucro Presumido': 'presumido', 'Lucro Real': 'real' };
+function campoRegime(selecionado) {
+  return `<div class="campo larga"><label>Regime tributário</label>
+    <select name="regime_tributario"><option value="">Não informado</option>
+      ${Object.entries(REGIMES_DRE).map(([k, n]) => `<option value="${k}" ${k === selecionado ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    <small>A DRE da empresa já começa com os impostos típicos deste regime. O contador confere e ajusta em Relatórios › DRE › Configurar.</small></div>`;
+}
+
+
 async function telaSolicitacoes() {
   const filtros = [['abertas', 'Em aberto'], ['Pendente', 'Pendentes'], ['Em contato', 'Em contato'],
     ['Aprovada', 'Aprovadas'], ['Recusada', 'Recusadas'], ['todas', 'Todas']];
@@ -400,8 +410,8 @@ async function telaSolicitacoes() {
 
   function aprovar(s) {
     abrirModal('Aprovar e criar empresa', `
-      <p>Confira os dados. Ao confirmar, o sistema cria a empresa e o usuário <strong>Administrador</strong> dela
-         com uma senha provisória.</p>
+      <p>Confira os dados. Ao confirmar, o sistema cria a empresa e o usuário <strong>Administrador</strong> dela,
+         que recebe o link para criar a senha.</p>
       <form novalidate>
         <div class="grade-campos">
           <div class="campo larga"><label>Nome da empresa *</label><input name="nome_empresa" required maxlength="150" value="${esc(s.nome_empresa)}"></div>
@@ -410,6 +420,7 @@ async function telaSolicitacoes() {
             <small>É com este CNPJ que a empresa vai entrar no sistema.</small></div>
           <div class="campo"><label>Nome do administrador *</label><input name="admin_nome" required maxlength="100" value="${esc(s.nome_completo)}"></div>
           <div class="campo"><label>E-mail do administrador *</label><input name="admin_email" type="email" required maxlength="150" value="${esc(s.email_corporativo)}"></div>
+          ${campoRegime(REGIME_DO_SITE[s.regime_fiscal] || '')}
         </div>
         <div class="form-erro" hidden></div>
         <div class="modal-rodape">
@@ -503,11 +514,43 @@ async function telaEmpresas() {
                 ${e.ativo
                   ? `<button type="button" class="icone-botao perigo" data-bloquear="${e.id}" title="Bloquear acesso"><i class="fas fa-lock"></i></button>`
                   : `<button type="button" class="icone-botao" data-desbloquear="${e.id}" title="Desbloquear acesso"><i class="fas fa-lock-open"></i></button>`}
-                <button type="button" class="icone-botao perigo" data-excluir-emp="${e.id}" title="Excluir empresa de vez (cadastro de teste)" aria-label="Excluir ${esc(e.nome)}"><i class="fas fa-trash-can"></i></button>
+                <button type="button" class="icone-botao perigo" data-excluir-emp="${e.id}" title="Excluir empresa (vai para a lixeira)" aria-label="Excluir ${esc(e.nome)}"><i class="fas fa-trash-can"></i></button>
               </td>
             </tr>`).join('')}
         </tbody>
       </table>`;
+  }
+
+  function excluirEmpresa(e) {
+    abrirModal('Excluir empresa', `
+      <p>A empresa <strong>${esc(e.nome)}</strong> sai do sistema <strong>com todos os dados dela</strong>
+         (${e.usuarios} usuário(s), ${e.viagens} viagem(ns), fretes, folhas, despesas, faturas…) e ninguém dela consegue mais entrar.</p>
+      <p>Ela fica guardada inteira na <strong>Lixeira</strong> do painel e pode ser <strong>restaurada</strong> com tudo de volta.
+         Se a ideia for só suspender o acesso, use <i class="fas fa-lock"></i> Bloquear.</p>
+      <form novalidate>
+        <div class="grade-campos">
+          <div class="campo larga"><label>Para confirmar, digite o CNPJ: <strong>${esc(formatarCnpj(e.cnpj))}</strong></label>
+            <input name="confirmacao" id="ex-cnpj" required maxlength="18" autocomplete="off"></div>
+          <div class="campo larga"><label>Motivo</label>
+            <input name="motivo" maxlength="200" list="motivos-empresa" placeholder="Ex.: teste, cancelou o contrato">
+            <datalist id="motivos-empresa"><option value="Empresa de teste"><option value="Cancelou o contrato"><option value="Cadastro duplicado"></datalist></div>
+        </div>
+        <div class="form-erro" hidden></div>
+        <div class="modal-rodape">
+          <button type="button" class="btn btn-secundario" data-cancelar>Cancelar</button>
+          <button type="submit" class="btn btn-perigo" id="ex-confirmar" disabled><i class="fas fa-trash-can"></i> Excluir empresa</button>
+        </div>
+      </form>`);
+    const campo = $('#ex-cnpj');
+    mascaraCnpj(campo);
+    // o botão só libera quando o CNPJ digitado bate
+    campo.addEventListener('input', () => { $('#ex-confirmar').disabled = campo.value.replace(/\D/g, '') !== e.cnpj; });
+    campo.focus();
+    ligarFormulario(async (dados) => {
+      await api(`/empresas/${e.id}`, { metodo: 'DELETE', corpo: dados });
+      toast(`${e.nome} foi para a lixeira.`);
+      carregar();
+    });
   }
 
   function novaEmpresa() {
@@ -521,6 +564,7 @@ async function telaEmpresas() {
           <div class="campo"><label>Telefone</label><input name="telefone" id="ne-telefone" maxlength="15" placeholder="(49) 99999-9999"></div>
           <div class="campo"><label>Nome do administrador *</label><input name="admin_nome" required maxlength="100"></div>
           <div class="campo"><label>E-mail do administrador *</label><input name="admin_email" type="email" required maxlength="150"></div>
+          ${campoRegime('')}
         </div>
         <div class="form-erro" hidden></div>
         <div class="modal-rodape">
@@ -540,47 +584,14 @@ async function telaEmpresas() {
     });
   }
 
-  // Excluir de vez (cadastros de teste): só confirma digitando o CNPJ da empresa
-  function excluirEmpresa(e) {
-    abrirModal('Excluir empresa de vez', `
-      <div class="aviso-erro"><i class="fas fa-triangle-exclamation"></i>
-        <strong>Não tem volta.</strong> A empresa não vai para a lixeira.</div>
-      <p>Vai ser apagado <strong>tudo</strong> de <strong>${esc(e.nome)}</strong> (${esc(formatarCnpj(e.cnpj))}):
-         ${e.usuarios} usuário(s), ${e.viagens} viagem(ns), fretes, clientes, despesas, folha, faturas e o histórico.
-         A solicitação de acesso que virou esta empresa também sai, e o CNPJ fica livre para cadastrar de novo.</p>
-      <p>Se a empresa for real e só precisa parar de usar, use <strong>Bloquear</strong> (os dados ficam guardados).</p>
-      <form novalidate>
-        <div class="grade-campos"><div class="campo larga"><label>Digite o CNPJ da empresa para confirmar *</label>
-          <input name="confirmacao" id="ex-cnpj" required maxlength="18" autocomplete="off" placeholder="${esc(formatarCnpj(e.cnpj))}"></div></div>
-        <div class="form-erro" hidden></div>
-        <div class="modal-rodape">
-          <button type="button" class="btn btn-secundario" data-cancelar>Cancelar</button>
-          <button type="submit" class="btn btn-perigo" id="ex-botao" disabled><i class="fas fa-trash-can"></i> Excluir tudo</button>
-        </div>
-      </form>`);
-    const campo = $('#ex-cnpj');
-    mascaraCnpj(campo);
-    // o botão só libera quando o CNPJ digitado bate com o da empresa
-    campo.addEventListener('input', () => {
-      $('#ex-botao').disabled = campo.value.replace(/\D/g, '') !== String(e.cnpj).replace(/\D/g, '');
-    });
-    campo.focus();
-
-    ligarFormulario(async (dados) => {
-      const r = await api(`/empresas/${e.id}`, { metodo: 'DELETE', corpo: dados });
-      toast(`Empresa ${r.empresa} excluída.`);
-      carregar();
-    });
-  }
-
   cliqueDaTela = async (ev) => {
     const alvo = ev.target.closest('button');
     if (!alvo) return;
     const empresa = (id) => empresas.find((e) => e.id === Number(id));
     try {
       if (alvo.id === 'btn-nova-empresa') novaEmpresa();
-      if (alvo.dataset.excluirEmp) excluirEmpresa(empresa(alvo.dataset.excluirEmp));
       if (alvo.dataset.plano) editarPlano(empresa(alvo.dataset.plano), carregar); // js/devCobranca.js
+      if (alvo.dataset.excluirEmp) excluirEmpresa(empresa(alvo.dataset.excluirEmp));
 
       if (alvo.dataset.bloquear) {
         const e = empresa(alvo.dataset.bloquear);

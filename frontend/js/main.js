@@ -94,6 +94,28 @@ menuUsuario.addEventListener('keydown', (e) => {
 });
 
 $('#btn-sair').addEventListener('click', sair);           // sair() está no api.js
+$('#btn-suporte').addEventListener('click', abrirSuporte);
+
+// Falar com o suporte: mostra o e-mail e abre a mensagem já preenchida com os dados
+// que ajudam a CTech a entender o problema (empresa, usuário e tela)
+function abrirSuporte() {
+  const tela = (TELAS[(location.hash || '#inicio').slice(1)] || TELAS.inicio).titulo;
+  const corpo = `Olá, equipe CTech!\n\n(Descreva aqui o que aconteceu. Se puder, anexe um print da tela.)\n\n---\nEmpresa: ${dadosEmpresa.nome || ''}\nUsuário: ${usuario.nome || ''} (${usuario.email || ''}) · ${usuario.perfil || ''}\nTela: ${tela}`;
+  const l = linksSuporte(`Suporte Xylo · ${dadosEmpresa.nome || ''}`, corpo);
+  abrirModal('Falar com o suporte', `
+    <p>Escreva para a equipe da CTech. A mensagem já vai com o nome da empresa, o seu usuário e a tela em que você está.</p>
+    <div class="suporte-email"><i class="fas fa-envelope" aria-hidden="true"></i><strong>${esc(SUPORTE_EMAIL)}</strong>
+      <button type="button" class="btn btn-secundario pequeno" id="sup-copiar"><i class="fas fa-copy"></i> Copiar</button></div>
+    <p class="sub">Escolha por onde escrever:</p>
+    <div class="suporte-opcoes">
+      <a class="btn btn-primario" href="${l.gmail}" target="_blank" rel="noopener"><i class="fab fa-google"></i> Escrever no Gmail</a>
+      <a class="btn btn-secundario" href="${l.outlook}" target="_blank" rel="noopener"><i class="fab fa-microsoft"></i> Outlook / Hotmail</a>
+      <a class="btn btn-secundario" href="${l.app}"><i class="fas fa-desktop"></i> Programa de e-mail do computador</a>
+    </div>
+    <div class="modal-rodape"><button type="button" class="btn btn-secundario" data-cancelar>Fechar</button></div>`);
+  $('#sup-copiar').addEventListener('click', async () => toast(await copiarTexto(SUPORTE_EMAIL) ? 'E-mail copiado.' : 'Selecione o e-mail e use Ctrl+C.'));
+  $('#modal-corpo [data-cancelar]').addEventListener('click', fecharModal);
+}
 $('#btn-menu').addEventListener('click', () => $('#menu').classList.toggle('aberto'));
 
 // ---------------------------------------------------------------------
@@ -564,6 +586,7 @@ function abrirTrocaSenha(obrigatoria = false) {
     usuario.deve_trocar_senha = false;
     localStorage.setItem('wc_usuario', JSON.stringify(usuario));
     Modal.obrigatorio = false;
+    if (window.Tutorial) Tutorial.automatico(); // primeiro acesso: depois de criar a senha, o tour
     toast(obrigatoria ? 'Senha criada. Bom trabalho!' : 'Senha alterada.');
   });
 }

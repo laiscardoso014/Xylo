@@ -13,6 +13,7 @@
 //
 // Todos os perfis podem usar (o assistente só lê; não altera nada).
 // =====================================================================
+const { SUPORTE_EMAIL } = require('../utils/suporte');
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
@@ -71,7 +72,8 @@ Onde fica cada coisa no Xylo (para explicar como fazer):
 - Operação: Viagens (botão "Nova viagem" ou "Ler ticket" pela foto/texto), Fretes, Despesas, Relatórios (por cliente, floresta, empreiteiro, classe, anual e DRE; exporta Excel, CSV e PDF).
 - Pessoal: Funcionários (marque "É motorista" e informe a placa e as faixas de comissão), Folha de pagamento (fechar, pagar, adiantamentos).
 - Administração (só Administrador): Financeiro (mensalidade do Xylo por PIX), Usuários (convidar e definir perfil), Histórico (quem alterou o quê), Lixeira (restaurar excluídos).
-- Menu do usuário (canto superior direito): Meu perfil, Dados da empresa (regime e alíquotas da DRE), Sair. O botão do sol/lua muda o tema.
+- Menu do usuário (canto superior direito): Meu perfil, Falar com o suporte, Ver tutorial, Dados da empresa (logo, razão social), Sair. O regime tributário e os impostos da DRE ficam em Relatórios › DRE › Configurar (já vêm preenchidos com o regime informado na contratação). O botão do sol/lua muda o tema.
+- Suporte da CTech (problemas no sistema, CNPJ, cobrança, empresa bloqueada, algo que você não consegue resolver): ${SUPORTE_EMAIL}
 - Toda tabela ordena clicando no título da coluna e tem o botão "Filtrar".
 - Perfis: Administrador (tudo), Financeiro (cadastra e lança, vê pessoal), Visualização (só consulta, não vê salários).
 

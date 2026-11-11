@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../config/db');
 const { autenticar } = require('../middlewares/auth');
+const { SUPORTE_EMAIL } = require('../utils/suporte');
 
 const router = express.Router();
 
@@ -58,7 +59,7 @@ router.post(
       }
       // Dados certos, mas acesso bloqueado: aí sim explica o motivo
       if (!usuario.empresa_ativa) {
-        return res.status(403).json({ erro: 'O acesso desta empresa está suspenso. Entre em contato com o suporte da CTech.' });
+        return res.status(403).json({ erro: `O acesso desta empresa está suspenso. Entre em contato com o suporte da CTech: ${SUPORTE_EMAIL}.` });
       }
       if (!usuario.usuario_ativo) {
         return res.status(403).json({ erro: 'Seu usuário está desativado. Fale com o administrador da sua empresa.' });
@@ -92,6 +93,27 @@ router.post(
 // GET /api/auth/me   (precisa do token): o frontend usa para checar se ainda está logado
 router.get('/me', autenticar, (req, res) => {
   res.json({ usuario: req.usuario });
+});
+
+// Tutorial do primeiro acesso: o frontend pergunta se já viu e avisa quando terminar/pular.
+// Fica na tabela tutorial_vistos (sem gatilho de histórico: não é alteração de dados da empresa).
+router.get('/tutorial', autenticar, async (req, res, next) => {
+  try {
+    const { rowCount } = await query('SELECT 1 FROM tutorial_vistos WHERE usuario_id = $1', [req.usuario.id]);
+    res.json({ visto: rowCount > 0 });
+  } catch (err) {
+    if (err.code === '42P01') return res.json({ visto: true }); // banco sem a migração: não incomoda
+    next(err);
+  }
+});
+router.post('/tutorial', autenticar, async (req, res, next) => {
+  try {
+    await query('INSERT INTO tutorial_vistos (usuario_id) VALUES ($1) ON CONFLICT (usuario_id) DO NOTHING', [req.usuario.id]);
+    res.status(204).end();
+  } catch (err) {
+    if (err.code === '42P01') return res.status(204).end();
+    next(err);
+  }
 });
 
 module.exports = router;

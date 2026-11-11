@@ -13,13 +13,16 @@
 // =====================================================================
 const crypto = require('crypto');
 const { enviarEmail, configuracao } = require('./smtp');
+const { SUPORTE_EMAIL } = require('../utils/suporte');
 
 const VALIDADE_HORAS = { convite: 48, troca_email: 24, nova_senha: 1 };
 const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
 
-// Endereço do sistema para montar os links (o frontend)
+// Endereço do sistema para montar os links (o frontend).
+// Sem APP_URL, usa o próprio servidor do Xylo (ele entrega as páginas): http://localhost:3000.
+// (Não usa o Live Server: ele costuma abrir a pasta C:\Xylo, e aí a página fica em /frontend/...)
 function urlDoSistema() {
-  const base = process.env.APP_URL || (process.env.FRONTEND_URL || '').split(',')[0] || 'http://localhost:5500';
+  const base = process.env.APP_URL || (process.env.FRONTEND_URL || '').split(',')[0] || `http://localhost:${process.env.PORT || 3000}`;
   return base.trim().replace(/\/+$/, '');
 }
 
@@ -49,7 +52,7 @@ function moldura({ titulo, paragrafos, botao, link, rodape }) {
 <tr><td style="padding:6px 28px 4px;font-size:15px;line-height:1.55">${paragrafos.map((p) => `<p style="margin:10px 0">${p}</p>`).join('')}</td></tr>
 <tr><td style="padding:14px 28px 6px"><a href="${esc(link)}" style="display:inline-block;background:#15803d;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px;font-size:15px">${esc(botao)}</a></td></tr>
 <tr><td style="padding:8px 28px 20px;font-size:12.5px;color:#6b7280;line-height:1.5">Se o botão não abrir, copie este endereço no navegador:<br><span style="word-break:break-all;color:#15803d">${esc(link)}</span></td></tr>
-<tr><td style="padding:14px 28px 22px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.5">${rodape}<br>Xylo · gestão de fretes e fornecimento de madeira · CTech Sistemas</td></tr>
+<tr><td style="padding:14px 28px 22px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.5">${rodape}<br>Dúvidas? Fale com o suporte: <a href="mailto:${SUPORTE_EMAIL}" style="color:#15803d">${SUPORTE_EMAIL}</a><br>Xylo · gestão de fretes e fornecimento de madeira · CTech Sistemas</td></tr>
 </table></td></tr></table></body></html>`;
   return html;
 }

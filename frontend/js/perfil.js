@@ -222,7 +222,7 @@ async function telaEmpresa() {
             <div class="campo larga"><label for="e-nome">Nome (fantasia) *</label><input id="e-nome" name="nome" required maxlength="150" value="${esc(e.nome)}"></div>
             <div class="campo larga"><label for="e-razao">Razão social</label><input id="e-razao" name="razao_social" maxlength="150" value="${esc(e.razao_social || '')}"></div>
             <div class="campo"><label for="e-cnpj">CNPJ</label><input id="e-cnpj" value="${esc(formatarCnpj(e.cnpj))}" readonly aria-describedby="ajuda-cnpj">
-              <small id="ajuda-cnpj">É o login da empresa: para alterar, fale com o suporte CTech.</small></div>
+              <small id="ajuda-cnpj">É o login da empresa: para alterar, fale com o suporte (<a href="mailto:${SUPORTE_EMAIL}">${SUPORTE_EMAIL}</a>).</small></div>
             <div class="campo"><label for="e-telefone">Telefone</label><input id="e-telefone" name="telefone" type="tel" value="${esc(e.telefone || '')}" placeholder="(49) 3222-2222"></div>
             <div class="campo larga"><label for="e-email">E-mail</label><input id="e-email" name="email" type="email" maxlength="150" value="${esc(e.email || '')}"></div>
             <div class="campo larga"><label for="e-endereco">Endereço</label><input id="e-endereco" name="endereco" maxlength="200" value="${esc(e.endereco || '')}" placeholder="Rua, número, bairro"></div>

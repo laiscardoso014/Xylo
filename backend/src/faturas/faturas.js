@@ -12,6 +12,7 @@
 const { pool, query } = require('../config/db');
 const { montarPix } = require('./pix');
 const { enviarEmail } = require('../conta/smtp');
+const { SUPORTE_EMAIL } = require('../utils/suporte');
 const { moldura, esc, urlDoSistema } = require('../conta/emails');
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -92,7 +93,7 @@ async function gerarDoMes(mes, { empresaId = null, origem = 'manual', valor = nu
     }
     const recebedor = {
       nome: cfg.recebedor_nome, documento: cfg.recebedor_doc, chave: cfg.chave_pix, tipo_chave: cfg.tipo_chave,
-      cidade: cfg.cidade, email: cfg.email_contato, whatsapp: cfg.whatsapp, instrucoes: cfg.instrucoes,
+      cidade: cfg.cidade, email: cfg.email_contato || SUPORTE_EMAIL, whatsapp: cfg.whatsapp, instrucoes: cfg.instrucoes,
     };
     for (const e of empresas) {
       if (e.ja_tem) { jaTinham++; continue; }

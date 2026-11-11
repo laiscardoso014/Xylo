@@ -285,7 +285,7 @@ router.get('/dre',
     return DRE.calcularDRE(req.usuario.empresaId, { de, ate, comparar: req.query.comparar || null, mensal: req.query.mensal === '1' });
   }));
 
-router.get('/dre/config', rota(async (req) => ({ ...(await DRE.lerConfig(req.usuario.empresaId)), grupos: DRE.GRUPOS, regimes: DRE.REGIMES })));
+router.get('/dre/config', rota(async (req) => ({ ...(await DRE.lerConfig(req.usuario.empresaId)), grupos: DRE.GRUPOS, regimes: DRE.REGIMES, sugestoes: DRE.SUGESTOES })));
 
 router.put('/dre/config', podeEditar,
   [body('categorias').optional().isArray(),
@@ -308,10 +308,10 @@ router.put('/dre/config', podeEditar,
         const erro = new Error('Só o Administrador altera os dados fiscais.'); erro.status = 403; throw erro;
       }
       await query(
-        `UPDATE empresas SET regime_tributario = $2, aliquota_receita = $3, aliquota_ir_csll = $4, base_ir_csll = $5 WHERE id = $1`,
+        `UPDATE empresas SET regime_tributario = $2, aliquota_receita = $3, aliquota_ir_csll = $4, base_ir_csll = $5, fiscal_sugerido = FALSE WHERE id = $1`,
         [e, f.regime_tributario || null, lerNumero(f.aliquota_receita ?? 0) || 0, lerNumero(f.aliquota_ir_csll ?? 0) || 0, f.base_ir_csll === 'receita' ? 'receita' : 'lucro']);
     }
-    return { ...(await DRE.lerConfig(e)), grupos: DRE.GRUPOS, regimes: DRE.REGIMES };
+    return { ...(await DRE.lerConfig(e)), grupos: DRE.GRUPOS, regimes: DRE.REGIMES, sugestoes: DRE.SUGESTOES };
   }));
 
 module.exports = router;

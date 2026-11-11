@@ -1,0 +1,10 @@
+LOGOS DO XYLO (CTech Sistemas)
+
+perfil-xylo.png ........... foto de perfil principal (Gmail do suporte, WhatsApp, Instagram). 1024x1024
+perfil-xylo-claro.png ..... versão em fundo claro
+perfil-suporte.png ........ com a palavra "Suporte" (para perfis grandes; no Gmail o texto fica pequeno demais)
+logo-xylo-horizontal.png .. logo com o nome, fundo transparente (assinatura de e-mail, documentos, TCC)
+
+Os .svg são os originais (podem ser aumentados sem perder qualidade).
+Cores: verde floresta #123B2C · verde sinal #3FAE74 · papel #F6F7F3
+O símbolo (dois troncos cruzados com o ponto verde no centro) é o mesmo do site.

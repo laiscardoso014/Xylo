@@ -38,7 +38,7 @@ const GRUPOS = {
   ir_csll: 'IRPJ e CSLL',
   nao_entra: 'Não entra na DRE',
 };
-const REGIMES = { mei: 'MEI', simples: 'Simples Nacional', presumido: 'Lucro Presumido', real: 'Lucro Real', outro: 'Outro' };
+const { REGIMES, SUGESTOES } = require('./regimes');
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const MESES_LONGOS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -82,7 +82,8 @@ function nomePeriodo(de, ate) {
 // ---------------------------------------------------------------------
 async function lerConfig(empresaId) {
   const [emp, cats] = await Promise.all([
-    query(`SELECT regime_tributario, aliquota_receita::float AS aliquota_receita, aliquota_ir_csll::float AS aliquota_ir_csll, base_ir_csll
+    query(`SELECT regime_tributario, aliquota_receita::float AS aliquota_receita, aliquota_ir_csll::float AS aliquota_ir_csll, base_ir_csll,
+                  fiscal_sugerido
              FROM empresas WHERE id = $1`, [empresaId]),
     query(`SELECT c.id, c.nome, c.ativo, COALESCE(c.grupo_dre, fn_grupo_dre_sugerido(c.nome)) AS grupo_dre,
                   (SELECT COUNT(*) FROM despesas d WHERE d.categoria_id = c.id AND d.status <> 'Cancelado')::int AS despesas
@@ -310,7 +311,8 @@ async function calcularDRE(empresaId, { de, ate, comparar = null, mensal = false
   // avisos de conferência
   const avisos = [];
   if (totalAtual.sem_compra) avisos.push(`${totalAtual.sem_compra} viagem(ns) sem o valor de compra da floresta: o custo da madeira está menor do que o real.`);
-  if (!n(fiscal.aliquota_receita) && !categorias.some((c) => c.grupo === 'impostos')) avisos.push('Sem alíquota de impostos sobre a receita: informe em Dados da empresa (regime e alíquota) para a DRE descontar os impostos.');
+  if (fiscal.fiscal_sugerido && fiscal.regime_tributario) avisos.push(`Impostos estimados para o ${REGIMES[fiscal.regime_tributario]} (valores típicos do regime). Peça ao contador para conferir e ajuste em Configurar.`);
+  if (!n(fiscal.aliquota_receita) && fiscal.regime_tributario !== 'mei' && !categorias.some((c) => c.grupo === 'impostos')) avisos.push('Sem alíquota de impostos sobre a receita: informe o regime e a alíquota em Relatórios › DRE › Configurar para a DRE descontar os impostos.');
   if (!totalAtual.folhas && atual.meses.length) avisos.push('Nenhuma folha de pagamento gerada no período: salários e comissões não aparecem (gere a folha em Pessoal › Folha de pagamento).');
 
   return {
@@ -327,4 +329,4 @@ async function calcularDRE(empresaId, { de, ate, comparar = null, mensal = false
   };
 }
 
-module.exports = { calcularDRE, lerConfig, GRUPOS, REGIMES, mesesEntre, nomePeriodo, somarMeses };
+module.exports = { calcularDRE, lerConfig, GRUPOS, REGIMES, SUGESTOES, mesesEntre, nomePeriodo, somarMeses };

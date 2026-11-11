@@ -5,6 +5,7 @@
 // Entende perguntas por palavras-chave e responde com as MESMAS ferramentas
 // que a IA usa - então os números são sempre os do banco.
 // =====================================================================
+const { SUPORTE_EMAIL } = require('../utils/suporte');
 const { query } = require('../config/db');
 const { executarFerramenta } = require('./ferramentas');
 
@@ -51,6 +52,11 @@ async function responderBasico(empresaId, texto, mesFoco, perfil = 'Visualizaç�
   const t = semAcento(texto);
   const mes = mesDaPergunta(texto, mesFoco);
   const usar = (nome, entrada) => executarFerramenta(empresaId, nome, entrada, perfil);
+
+  // Suporte da CTech
+  if (/\bsuporte\b|falar com (alguem|uma pessoa|atendente)|atendimento|contato da ctech|e-?mail da ctech/.test(t)) {
+    return { texto: `Para falar com o suporte da CTech, mande um e-mail para ${SUPORTE_EMAIL} contando o que aconteceu (se puder, com um print da tela). Também dá para abrir pelo menu do seu nome, no canto superior direito: Falar com o suporte.` };
+  }
 
   // Ticket ou placa citados
   const ticket = t.match(/ticket\s*(?:n[ºo.]?\s*)?(\d{3,})/);

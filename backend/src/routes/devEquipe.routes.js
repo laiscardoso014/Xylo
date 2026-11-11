@@ -10,6 +10,7 @@
 //   GET    /usuarios?empresa_id=&busca=   usuários de todas as empresas (só leitura)
 //   GET    /historico?area=&dev_id=&dias=  o que a equipe fez no painel
 //   DELETE /solicitacoes/:id { motivo }  manda a solicitação para a lixeira
+//   DELETE /empresas/:id { confirmacao: CNPJ, motivo }  manda a empresa INTEIRA para a lixeira
 //   GET    /lixeira
 //   POST   /lixeira/:id/restaurar
 //   DELETE /lixeira/:id               apaga de vez
@@ -20,6 +21,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { body, param, query: q, validationResult } = require('express-validator');
 const { pool, query } = require('../config/db');
+const { fotografar, restaurar: restaurarEmpresa } = require('../utils/copiaEmpresa');
 
 const router = express.Router();
 
@@ -181,10 +183,49 @@ router.delete('/solicitacoes/:id', [...idValido, body('motivo').optional({ value
   }
 });
 
+
+// =====================================================================
+// EXCLUIR EMPRESA (vai inteira para a lixeira do painel e pode ser restaurada)
+//   DELETE /empresas/:id   { confirmacao: "<CNPJ>", motivo }
+// =====================================================================
+router.delete('/empresas/:id', [
+  ...idValido,
+  body('confirmacao').customSanitizer((v) => String(v || '').replace(/\D/g, '')),
+  body('motivo').optional({ values: 'falsy' }).isString().isLength({ max: 200 }),
+], validar, async (req, res, next) => {
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const { rows } = await c.query('SELECT id, nome, cnpj FROM empresas WHERE id = $1 FOR UPDATE', [req.params.id]);
+    const e = rows[0];
+    if (!e) { await c.query('ROLLBACK'); return res.status(404).json({ erro: 'Empresa não encontrada.' }); }
+    if (req.body.confirmacao !== e.cnpj) {
+      await c.query('ROLLBACK');
+      return res.status(400).json({ erro: 'Para confirmar, digite o CNPJ da empresa exatamente como está cadastrado.' });
+    }
+    const foto = await fotografar(c, e.id);
+    const cnpj = e.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    await c.query(
+      `INSERT INTO dev_lixeira (tipo, resumo, dados, motivo, excluido_por) VALUES ('empresa', $1, $2, $3, $4)`,
+      [`${e.nome} (CNPJ ${cnpj})`.slice(0, 200), foto, (req.body.motivo || '').trim() || null, req.dev.id]);
+    // apaga a empresa: o banco apaga junto tudo o que é dela (ON DELETE CASCADE)
+    await c.query('DELETE FROM empresas WHERE id = $1', [e.id]);
+    await c.query('COMMIT');
+    req.resumoAcao = e.nome;
+    res.status(204).end();
+  } catch (err) {
+    await c.query('ROLLBACK').catch(() => {});
+    next(err);
+  } finally {
+    c.release();
+  }
+});
+
 router.get('/lixeira', async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT l.id, l.tipo, l.resumo, l.motivo, l.dados, to_char(l.excluido_em, 'YYYY-MM-DD"T"HH24:MI') AS excluido_em, d.nome AS excluido_por
+      `SELECT l.id, l.tipo, l.resumo, l.motivo,
+              CASE WHEN l.tipo = 'empresa' THEN jsonb_build_object('contagem', l.dados->'contagem') ELSE l.dados END AS dados, to_char(l.excluido_em, 'YYYY-MM-DD"T"HH24:MI') AS excluido_em, d.nome AS excluido_por
          FROM dev_lixeira l LEFT JOIN desenvolvedores d ON d.id = l.excluido_por ORDER BY l.excluido_em DESC`);
     res.json(rows);
   } catch (err) {
@@ -210,12 +251,14 @@ router.post('/lixeira/:id/restaurar', idValido, validar, async (req, res, next) 
       const valores = nomes.map((k) => d[k] ?? null);
       await c.query(`INSERT INTO solicitacoes_acesso (${nomes.join(', ')}) VALUES (${nomes.map((_, i) => `$${i + 1}`).join(', ')})`, valores);
     }
+    if (item.tipo === 'empresa') await restaurarEmpresa(c, item.dados);
     await c.query('DELETE FROM dev_lixeira WHERE id = $1', [item.id]);
     await c.query('COMMIT');
     req.resumoAcao = item.resumo;
     res.json({ ok: true });
   } catch (err) {
     await c.query('ROLLBACK').catch(() => {});
+    if (err.status) return res.status(err.status).json({ erro: err.message });
     next(err);
   } finally {
     c.release();

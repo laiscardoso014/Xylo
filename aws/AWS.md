@@ -71,10 +71,17 @@ tamanho atual do Xylo isso fica em **US$ 0 a US$ 1 por mês**.
 3. Entre no console. No canto superior direito: seu nome → **Credenciais de segurança**
    → **Atribuir dispositivo de MFA** (use o Google Authenticator ou similar).
    Isso protege a conta caso alguém descubra a senha.
-4. No canto superior direito, troque a **região** para a **mesma do seu banco no Neon**
-   (no painel do Neon aparece, por exemplo, *AWS US East 1 (N. Virginia)* →
-   escolha **Leste dos EUA (Norte da Virgínia) us-east-1**).
+4. **Região.** Sua conta é da *nova experiência da AWS* (login social, "projetos"):
+   nela a região é **fixa, definida pelo endereço do cadastro**, e não dá para criar
+   funções em outra. Confira qual é em **AWS Settings → View all projects → Overview →
+   Additional Info → Region** (com endereço no Brasil, deve ser **São Paulo, `sa-east-1`**).
    Tudo daqui para frente é criado **nessa região**.
+5. **Deixe o banco perto das funções.** Cada tela faz várias consultas ao banco; com as
+   funções em São Paulo e o banco nos EUA, cada consulta leva uns 120 ms a mais e o
+   sistema fica lento. No Neon, crie um projeto novo na região
+   **AWS South America (São Paulo) `aws-sa-east-1`**, rode o `database.sql` nele e use
+   essa string de conexão. (Se já tiver dados no banco antigo, gere um backup e restaure
+   no novo com o `restaurar-backup.js`, ver seção 8.)
 
 ## 2. Alerta de gastos (faça antes de qualquer outra coisa)
 

@@ -101,6 +101,9 @@
             </form>
 
             <p class="login-novo">Sua empresa ainda não usa o Xylo? <a href="index.html#contato">Peça uma demonstração</a>.</p>
+            <p class="login-suporte">Problemas para entrar? Fale com o suporte:
+                <a href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=suportectechdev@gmail.com&amp;su=Problema%20para%20entrar%20no%20Xylo" target="_blank" rel="noopener" id="email-suporte">suportectechdev@gmail.com</a>
+                <button type="button" class="link-discreto copiar-suporte" id="copiar-suporte" title="Copiar o e-mail"><i class="fas fa-copy" aria-hidden="true"></i> copiar</button></p>
 
             <div class="login-rodape">
                 <a href="index.html" class="back-home"><i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar para o site</a>
@@ -126,6 +129,13 @@
             botao.innerHTML = mostrando ? '<i class="fas fa-eye" aria-hidden="true"></i>' : '<i class="fas fa-eye-slash" aria-hidden="true"></i>';
         });
     })();
+
+    // Copiar o e-mail do suporte (para quem não usa o Gmail)
+    document.getElementById('copiar-suporte')?.addEventListener('click', async (e) => {
+        const botao = e.currentTarget; // guardado antes do await (depois dele o navegador zera currentTarget)
+        const ok = await copiarTexto(SUPORTE_EMAIL);
+        botao.innerHTML = ok ? '<i class="fas fa-check" aria-hidden="true"></i> copiado' : 'selecione e use Ctrl+C';
+    });
 </script>
 </body>
 </html>

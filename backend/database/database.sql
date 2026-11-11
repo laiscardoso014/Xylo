@@ -1155,3 +1155,12 @@ CREATE TABLE IF NOT EXISTS dev_lixeira (
     excluido_por INT REFERENCES desenvolvedores(id) ON DELETE SET NULL,
     excluido_em  TIMESTAMP NOT NULL DEFAULT now()
 );
+
+-- Impostos da DRE ainda são a sugestão automática do regime (ver migracao_regime_empresa.sql)
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS fiscal_sugerido BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Tour guiado do primeiro acesso (ver migracao_tutorial.sql)
+CREATE TABLE IF NOT EXISTS tutorial_vistos (
+    usuario_id INT PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+    visto_em   TIMESTAMPTZ NOT NULL DEFAULT now()
+);

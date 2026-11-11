@@ -128,18 +128,31 @@ function cnpjValido(valor) {
   return digito(12) === Number(c[12]) && digito(13) === Number(c[13]);
 }
 
+// E-mail de suporte da CTech (aparece nas telas de ajuda)
+const SUPORTE_EMAIL = 'suportectechdev@gmail.com';
+
+// Endereços para escrever ao suporte. O "mailto:" depende de um programa de e-mail
+// instalado no computador (sem ele, o navegador abre uma aba em branco); por isso
+// também oferecemos o Gmail e o Outlook pelo navegador, que funcionam em qualquer lugar.
+function linksSuporte(assunto = 'Suporte Xylo', corpo = '') {
+  const a = encodeURIComponent(assunto); const c = encodeURIComponent(corpo); const para = encodeURIComponent(SUPORTE_EMAIL);
+  return {
+    gmail: `https://mail.google.com/mail/?view=cm&fs=1&to=${para}&su=${a}&body=${c}`,
+    outlook: `https://outlook.live.com/mail/0/deeplink/compose?to=${para}&subject=${a}&body=${c}`,
+    app: `mailto:${SUPORTE_EMAIL}?subject=${a}&body=${c}`,
+  };
+}
+async function copiarTexto(texto) {
+  try { await navigator.clipboard.writeText(texto); return true; } catch { /* navegador sem permissão */ }
+  const t = document.createElement('textarea'); t.value = texto; t.style.position = 'fixed'; t.style.opacity = '0';
+  document.body.appendChild(t); t.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch { ok = false; }
+  t.remove(); return ok;
+}
+
 const DDDS_BRASIL = [11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 27, 28, 31, 32, 33, 34, 35, 37, 38,
   41, 42, 43, 44, 45, 46, 47, 48, 49, 51, 53, 54, 55, 61, 62, 63, 64, 65, 66, 67, 68, 69, 71, 73, 74, 75, 77, 79,
   81, 82, 83, 84, 85, 86, 87, 88, 89, 91, 92, 93, 94, 95, 96, 97, 98, 99];
-
-// Celular: DDD + 9 + 8 números. Fixo: DDD + (2 a 5) + 7 números.
-function telefoneValido(valor) {
-  const t = soDigitos(valor);
-  if (!DDDS_BRASIL.includes(Number(t.slice(0, 2)))) return false;
-  if (t.length === 11) return t[2] === '9';
-  if (t.length === 10) return /[2-5]/.test(t[2]);
-  return false;
-}
 
 // Diz o que está errado (ou '' se estiver certo / vazio)
 function problemaCnpj(valor) {

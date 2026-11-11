@@ -227,6 +227,8 @@ async function telaDRE(box) {
       <form novalidate>
         <fieldset class="dre-config-bloco" ${PERFIL.admin ? '' : 'disabled'}>
           <legend>Impostos (o contador informa) ${PERFIL.admin ? '' : '<small>· só o Administrador altera</small>'}</legend>
+          <p class="dre-nota-regime" id="cf-nota" ${f.regime_tributario && cfg.sugestoes?.[f.regime_tributario] ? '' : 'hidden'}>
+            <i class="fas fa-circle-info"></i> <span>${f.fiscal_sugerido ? '<strong>Valores típicos do regime, preenchidos automaticamente.</strong> ' : ''}${esc(cfg.sugestoes?.[f.regime_tributario]?.nota || '')}</span></p>
           <div class="grade-campos">
             <div class="campo"><label for="cf-regime">Regime tributário</label>
               <select id="cf-regime" name="regime_tributario"><option value="">Não informado</option>
@@ -260,6 +262,17 @@ async function telaDRE(box) {
         </div>
       </form>`);
     $('#modal').classList.add('modal-medio');
+    // Trocou o regime: preenche os impostos típicos dele (o contador ajusta se precisar)
+    $('#cf-regime').addEventListener('change', (e) => {
+      const sug = cfg.sugestoes?.[e.target.value];
+      const nota = $('#cf-nota');
+      nota.hidden = !sug;
+      if (!sug) return;
+      $('#cf-aliq').value = decimal(sug.aliquota_receita) || '0';
+      $('#cf-ir').value = decimal(sug.aliquota_ir_csll) || '0';
+      $('#cf-base').value = sug.base_ir_csll;
+      nota.querySelector('span').innerHTML = `<strong>Preenchido com os valores típicos do regime.</strong> ${esc(sug.nota)}`;
+    });
     ligarFormulario(async (dadosForm) => {
       const corpo = {
         categorias: [...document.querySelectorAll('#modal-corpo [data-categoria]')].map((s) => ({ id: Number(s.dataset.categoria), grupo_dre: s.value })),

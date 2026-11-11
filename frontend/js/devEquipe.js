@@ -210,9 +210,11 @@ async function telaHistorico() {
 async function telaLixeira() {
   conteudo.innerHTML = `
     <p class="nota-tela"><i class="fas fa-circle-info" aria-hidden="true"></i>
-      <span>Solicitações de acesso excluídas (teste, spam, duplicadas). Restaurar devolve a solicitação para a lista com a mesma situação. "Apagar de vez" não tem volta.</span></p>
+      <span>Solicitações de acesso e empresas excluídas. Restaurar devolve tudo como estava (a empresa volta com usuários, viagens, folhas e todos os dados). "Apagar de vez" não tem volta.</span></p>
     <div id="lista-lix" class="carregando">Carregando…</div>`;
   let itens = [];
+  const resumoEmpresa = (n = {}) => [['usuarios', 'usuário(s)'], ['viagens', 'viagem(ns)'], ['fretes', 'frete(s)'], ['funcionarios', 'funcionário(s)'], ['despesas', 'despesa(s)']]
+    .filter(([k]) => n[k]).map(([k, r]) => `${n[k]} ${r}`).join(' · ') || 'sem lançamentos';
   async function carregar() {
     const box = $('#lista-lix');
     try {
@@ -220,10 +222,12 @@ async function telaLixeira() {
       if (!itens.length) { box.className = 'card vazio'; box.textContent = 'A lixeira está vazia.'; return; }
       box.className = 'card sem-padding';
       box.innerHTML = `<div class="tabela-wrap"><table class="tabela">
-        <thead><tr><th>Solicitação</th><th>Excluída</th><th>Motivo</th><th></th></tr></thead>
+        <thead><tr><th>Item</th><th>Excluído</th><th>Motivo</th><th></th></tr></thead>
         <tbody>${itens.map((l) => `
           <tr>
-            <td><strong>${esc(l.dados.nome_empresa || l.resumo)}</strong><div class="sub">${esc(l.dados.nome_completo || '')}${l.dados.email_corporativo ? ` · ${esc(l.dados.email_corporativo)}` : ''}</div></td>
+            <td>${l.tipo === 'empresa'
+              ? `<span class="selo selo-recusada">Empresa</span> <strong>${esc(l.resumo)}</strong><div class="sub">${esc(resumoEmpresa(l.dados.contagem))}</div>`
+              : `<span class="selo">Solicitação</span> <strong>${esc(l.dados.nome_empresa || l.resumo)}</strong><div class="sub">${esc(l.dados.nome_completo || '')}${l.dados.email_corporativo ? ` · ${esc(l.dados.email_corporativo)}` : ''}</div>`}</td>
             <td>${dataHoraBR(l.excluido_em)}<div class="sub">por ${esc(l.excluido_por || '–')}</div></td>
             <td>${esc(l.motivo) || '<span class="sub">–</span>'}</td>
             <td class="acoes">
@@ -245,7 +249,9 @@ async function telaLixeira() {
       }
       if (alvo.dataset.apagar) {
         const l = itens.find((x) => x.id === Number(alvo.dataset.apagar));
-        if (!confirm(`Apagar de vez "${l.resumo}"? Não tem como desfazer.`)) return;
+        if (!confirm(l.tipo === 'empresa'
+          ? `Apagar de vez a empresa "${l.resumo}" e TODOS os dados dela? Não tem como desfazer.`
+          : `Apagar de vez "${l.resumo}"? Não tem como desfazer.`)) return;
         await api(`/lixeira/${l.id}`, { metodo: 'DELETE' });
         toast('Apagada de vez.'); carregar();
       }
