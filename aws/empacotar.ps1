@@ -16,7 +16,7 @@ $destino = Join-Path $PSScriptRoot 'xylo-lambda.zip'
 Write-Host '1/3 Copiando o backend (sem .env e sem node_modules)...'
 if (Test-Path $temp) { Remove-Item $temp -Recurse -Force }
 New-Item -ItemType Directory $temp | Out-Null
-Get-ChildItem $backend -Force | Where-Object { $_.Name -notin @('node_modules', '.env', '.env.local') } |
+Get-ChildItem $backend -Force | Where-Object { $_.Name -notin @('node_modules', '.env', '.env.local', 'backup.log') } |
   Copy-Item -Destination $temp -Recurse -Force
 
 Write-Host '2/3 Instalando só as dependências de produção...'
@@ -27,8 +27,21 @@ Pop-Location
 
 Write-Host '3/3 Compactando...'
 if (Test-Path $destino) { Remove-Item $destino -Force }
-# o lambda.js precisa ficar na RAIZ do zip (não dentro de uma pasta "backend")
-Compress-Archive -Path (Join-Path $temp '*') -DestinationPath $destino
+# NÃO usamos o Compress-Archive: no Windows PowerShell ele grava as pastas com "\"
+# (src\app.js) e no Linux da AWS isso vira um arquivo com esse nome, não uma pasta.
+# Aqui cada arquivo entra com "/" e o lambda.js fica na RAIZ do zip.
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$base = (Resolve-Path $temp).Path.TrimEnd('\') + '\'
+$zip = [System.IO.Compression.ZipFile]::Open($destino, [System.IO.Compression.ZipArchiveMode]::Create)
+try {
+  Get-ChildItem $temp -Recurse -File -Force | ForEach-Object {
+    $nome = $_.FullName.Substring($base.Length).Replace('\', '/')
+    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $nome, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+  }
+} finally {
+  $zip.Dispose()
+}
 Remove-Item $temp -Recurse -Force
 
 $mb = [math]::Round((Get-Item $destino).Length / 1MB, 1)
