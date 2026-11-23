@@ -126,6 +126,7 @@ const TELAS = {
   clientes: { titulo: 'Clientes', desenhar: () => telaCadastro(CADASTROS.clientes) },
   florestas: { titulo: 'Florestas', desenhar: () => telaCadastro(CADASTROS.florestas) },
   empreiteiros: { titulo: 'Empreiteiros', desenhar: () => telaCadastro(CADASTROS.empreiteiros) },
+  classes: { titulo: 'Classes de madeira', desenhar: () => telaCadastro(CADASTROS.classes) },
   viagens: { titulo: 'Viagens', desenhar: telaViagens },            // js/viagens.js
   fretes: { titulo: 'Fretes', desenhar: telaFretes },               // js/fretes.js
   despesas: { titulo: 'Despesas', desenhar: telaDespesas },         // js/despesas.js
@@ -229,9 +230,12 @@ async function telaCadastro(cfg) {
   function campoHtml(c, item) {
     const valor = c.formatar ? c.formatar(item[c.nome]) : item[c.nome];
     const comum = `name="${c.nome}" ${c.obrigatorio ? 'required' : ''} ${c.max ? `maxlength="${c.max}"` : ''} ${c.dica ? `placeholder="${c.dica}"` : ''}`;
+    const atual = valor ?? c.padrao ?? '';
     const entrada = c.tipo === 'textarea'
       ? `<textarea ${comum} rows="3">${esc(valor)}</textarea>`
-      : `<input ${comum} type="${c.tipo || 'text'}" value="${esc(valor)}">`;
+      : c.tipo === 'select'
+        ? `<select name="${c.nome}" ${c.obrigatorio ? 'required' : ''}>${c.opcoes.map(([v, t]) => `<option value="${v}" ${String(atual) === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`
+        : `<input ${comum} type="${c.tipo || 'text'}" value="${esc(valor)}">`;
     return `<div class="campo ${c.larga ? 'larga' : ''}">
       <label>${c.rotulo}${c.obrigatorio ? ' *' : ''}</label>${entrada}${c.ajuda ? `<small>${c.ajuda}</small>` : ''}
     </div>`;
@@ -355,6 +359,26 @@ const CADASTROS = {
       { nome: 'cpf_cnpj', rotulo: 'CPF/CNPJ', max: 18, ajuda: 'Opcional', formatar: formatarDocumento, mascara: mascaraDocumento },
       { nome: 'telefone', rotulo: 'Telefone / WhatsApp', max: 15, dica: '(49) 99999-9999', formatar: formatarTelefone, mascara: mascaraTelefone },
       { nome: 'observacoes', rotulo: 'Observações', tipo: 'textarea', larga: true },
+    ],
+  },
+
+  // CLASSES DE MADEIRA (Fina, Média, Grossa... escolhida em cada viagem)
+  classes: {
+    rota: '/classes', singular: 'classe', Singular: 'Classe', artigo: 'a', Artigo: 'A', genero: 'a',
+    novo: 'Nova classe', vazio: 'Nenhuma classe cadastrada ainda.',
+    busca: ['nome', 'descricao', 'nomes_ticket'],
+    colunas: [
+      { titulo: 'Classe', valor: (c) => `<strong>${esc(c.nome)}</strong>` },
+      { titulo: 'Descrição', valor: (c) => comSub(esc(c.descricao), c.nomes_ticket ? `No ticket: ${c.nomes_ticket}` : '') },
+      { titulo: 'Unidade', valor: (c) => (c.unidade_medida === 'M3' ? 'm³' : 'Tonelada') },
+      { titulo: 'Viagens', valor: (c) => Number(c.viagens).toLocaleString('pt-BR') },
+    ],
+    campos: [
+      { nome: 'nome', rotulo: 'Nome da classe', obrigatorio: true, max: 50, dica: 'Ex.: Fina, Toras 40+, Cavaco' },
+      { nome: 'unidade_medida', rotulo: 'Unidade', tipo: 'select', padrao: 'TON', opcoes: [['TON', 'Tonelada'], ['M3', 'Metro cúbico (m³)']] },
+      { nome: 'descricao', rotulo: 'Descrição', max: 150, larga: true, dica: 'Ex.: Diâmetro 16 a 25 cm', ajuda: 'Opcional: ajuda a equipe a escolher a classe certa na viagem' },
+      { nome: 'nomes_ticket', rotulo: 'Como aparece no ticket', max: 300, larga: true, dica: 'Ex.: PINUS GROSSO, TORA G, G32+',
+        ajuda: 'Opcional: os nomes que a balança escreve para esta classe, separados por vírgula. A leitura do ticket e a importação de planilha usam esses nomes.' },
     ],
   },
 };

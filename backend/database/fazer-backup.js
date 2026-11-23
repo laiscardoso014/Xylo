@@ -25,8 +25,20 @@ const manter = Math.max(1, Number(process.env.BACKUP_MANTER) || 30);
 
 async function principal() {
   if (!process.env.CONNECTION_STRING) throw new Error('Falta o CONNECTION_STRING (no .env ou na variável de ambiente).');
-  fs.mkdirSync(pasta, { recursive: true });
+  try {
+    fs.mkdirSync(pasta, { recursive: true });
+  } catch (err) {
+    const raiz = path.parse(pasta).root;
+    if (!fs.existsSync(raiz)) throw new Error(`O disco ${raiz} não existe neste computador. Se a pasta é do Google Drive, abra o "Google Drive para computador", entre com a conta e confira a letra no Explorador de Arquivos.`);
+    throw new Error(`Não consegui criar a pasta ${pasta} (${err.code}). Se ela é do Google Drive, confira o caminho no Explorador (Shift + botão direito na pasta > Copiar como caminho).`);
+  }
   const b = await gerarBackup();
+  // banco sem tabelas = endereço errado ou banco novo ainda não criado: não salva (um backup
+  // vazio no meio dos bons é uma armadilha na hora de restaurar)
+  if (!b.tabelas || !(b.contagem.empresas > 0)) {
+    throw new Error(`o banco do CONNECTION_STRING está vazio (${b.tabelas} tabelas, ${b.contagem.empresas || 0} empresas). `
+      + 'Confira se o .env aponta para o banco certo. Nenhum arquivo foi salvo.');
+  }
   const arquivo = path.join(pasta, `xylo-${b.dia}_${b.hora}.json.gz`);
   // grava num temporário e renomeia: um backup interrompido nunca fica com cara de completo
   fs.writeFileSync(`${arquivo}.parcial`, b.gz);

@@ -96,7 +96,7 @@ function mostrarConvite(titulo, acesso, nomePessoa, whatsapp) {
   const aviso = c.enviado
     ? `<div class="aviso-info ok"><i class="fas fa-envelope-circle-check"></i> E-mail de ativação enviado para <strong>${esc(acesso.email)}</strong>.</div>`
     : c.modo_teste
-      ? '<div class="aviso-info"><i class="fas fa-triangle-exclamation"></i> Modo teste: o servidor não tem e-mail configurado (EMAIL_* no .env). Mande o link abaixo para a pessoa.</div>'
+      ? '<div class="aviso-info"><i class="fas fa-triangle-exclamation"></i> Modo teste: o servidor está sem e-mail configurado. Na AWS, confira as variáveis <code>EMAIL_BREVO_CHAVE</code> e <code>EMAIL_REMETENTE</code> nas funções xylo-api e xylo-ia (no computador, no arquivo .env). Enquanto isso, mande o link abaixo para a pessoa.</div>'
       : `<div class="aviso-info"><i class="fas fa-triangle-exclamation"></i> A empresa foi criada, mas o e-mail não saiu: ${esc(c.erro || 'erro no servidor de e-mail')}. Corrija e use "Nova senha" do administrador, ou peça para a pessoa usar "Esqueci minha senha" no login.</div>`;
   const fone = String(whatsapp || '').replace(/\D/g, '');
   const linkWhats = fone && (c.enviado || c.modo_teste) ? `https://wa.me/55${fone}?text=${encodeURIComponent(mensagem)}` : '';

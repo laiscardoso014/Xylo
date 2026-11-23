@@ -56,7 +56,7 @@ tamanho atual do Xylo isso fica em **US$ 0 a US$ 1 por mês**.
 - [ ] Opcional: a chave da Brevo (e-mails).
 - [ ] O pacote das funções: em `C:\Xylo`, rode
       `powershell -ExecutionPolicy Bypass -File aws\empacotar.ps1`
-      → gera `C:\Xylo\aws\xylo-lambda.zip` (uns 3 MB).
+      → gera `C:\Xylo\aws\xylo-lambda.zip` (uns 3 MB) e confere que o `lambda.js` está na raiz.
 
 > Guarde essas senhas num lugar seguro (um gerenciador de senhas). Nunca
 > coloque o arquivo `.env` no GitHub nem mande para ninguém.
@@ -72,16 +72,16 @@ tamanho atual do Xylo isso fica em **US$ 0 a US$ 1 por mês**.
    → **Atribuir dispositivo de MFA** (use o Google Authenticator ou similar).
    Isso protege a conta caso alguém descubra a senha.
 4. **Região.** Sua conta é da *nova experiência da AWS* (login social, "projetos"):
-   nela a região é **fixa, definida pelo endereço do cadastro**, e não dá para criar
-   funções em outra. Confira qual é em **AWS Settings → View all projects → Overview →
-   Additional Info → Region** (com endereço no Brasil, deve ser **São Paulo, `sa-east-1`**).
+   nela a região é **fixa, definida pelo país do endereço do cadastro**. Para o Brasil é
+   **US East (Ohio), `us-east-2`** (dá para ver no endereço do console: `region=us-east-2`).
    Tudo daqui para frente é criado **nessa região**.
+   **Não feche/desative o projeto**: um projeto fechado só volta pedindo ao suporte
+   (dentro de 90 dias). Se precisar, crie outro em settings.aws.com > Projetos > Criar projeto.
 5. **Deixe o banco perto das funções.** Cada tela faz várias consultas ao banco; com as
-   funções em São Paulo e o banco nos EUA, cada consulta leva uns 120 ms a mais e o
-   sistema fica lento. No Neon, crie um projeto novo na região
-   **AWS South America (São Paulo) `aws-sa-east-1`**, rode o `database.sql` nele e use
-   essa string de conexão. (Se já tiver dados no banco antigo, gere um backup e restaure
-   no novo com o `restaurar-backup.js`, ver seção 8.)
+   funções em Ohio e o banco em outro lugar, cada consulta leva mais de 100 ms a mais e o
+   sistema fica lento. No Neon, crie o projeto na região **AWS US East 2 (Ohio)**, rode o
+   `database.sql` nele e use essa string de conexão. Para levar dados de outro banco:
+   `fazer-backup.js` no antigo e `restaurar-backup.js` no novo (ver seção 8).
 
 ## 2. Alerta de gastos (faça antes de qualquer outra coisa)
 

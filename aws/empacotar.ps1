@@ -6,45 +6,33 @@
 #
 # O mesmo .zip vai nas 4 funções (xylo-api, xylo-ia, xylo-rotinas, xylo-backup).
 # NÃO inclui o .env (as senhas ficam nas variáveis de cada função, na AWS).
+# Usa o tar do Windows (10 ou mais novo): ele grava as pastas com "/", que é o
+# que o Linux da AWS entende. (O Compress-Archive grava com "\" e a função não
+# acha os próprios arquivos.)
 # =====================================================================
 $ErrorActionPreference = 'Stop'
-$raiz    = Split-Path -Parent $PSScriptRoot
-$backend = Join-Path $raiz 'backend'
-$temp    = Join-Path $env:TEMP 'xylo-lambda'
+$backend = Join-Path (Split-Path -Parent $PSScriptRoot) 'backend'
 $destino = Join-Path $PSScriptRoot 'xylo-lambda.zip'
 
-Write-Host '1/3 Copiando o backend (sem .env e sem node_modules)...'
-if (Test-Path $temp) { Remove-Item $temp -Recurse -Force }
-New-Item -ItemType Directory $temp | Out-Null
-Get-ChildItem $backend -Force | Where-Object { $_.Name -notin @('node_modules', '.env', '.env.local', 'backup.log') } |
-  Copy-Item -Destination $temp -Recurse -Force
-
-Write-Host '2/3 Instalando só as dependências de produção...'
-Push-Location $temp
-npm install --omit=dev --no-audit --no-fund | Out-Host
-if ($LASTEXITCODE -ne 0) { Pop-Location; throw 'npm install falhou' }
-Pop-Location
-
-Write-Host '3/3 Compactando...'
-if (Test-Path $destino) { Remove-Item $destino -Force }
-# NÃO usamos o Compress-Archive: no Windows PowerShell ele grava as pastas com "\"
-# (src\app.js) e no Linux da AWS isso vira um arquivo com esse nome, não uma pasta.
-# Aqui cada arquivo entra com "/" e o lambda.js fica na RAIZ do zip.
-Add-Type -AssemblyName System.IO.Compression
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-$base = (Resolve-Path $temp).Path.TrimEnd('\') + '\'
-$zip = [System.IO.Compression.ZipFile]::Open($destino, [System.IO.Compression.ZipArchiveMode]::Create)
+Push-Location $backend
 try {
-  Get-ChildItem $temp -Recurse -File -Force | ForEach-Object {
-    $nome = $_.FullName.Substring($base.Length).Replace('\', '/')
-    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $nome, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
-  }
+  Write-Host '1/2 Conferindo as dependências...'
+  npm install --no-audit --no-fund | Out-Host
+  if ($LASTEXITCODE -ne 0) { throw 'npm install falhou' }
+
+  Write-Host '2/2 Compactando...'
+  if (Test-Path $destino) { Remove-Item $destino -Force }
+  tar -a -c -f $destino lambda.js server.js package.json src database node_modules
+  if ($LASTEXITCODE -ne 0) { throw 'tar falhou' }
 } finally {
-  $zip.Dispose()
+  Pop-Location
 }
-Remove-Item $temp -Recurse -Force
+
+# confere: o lambda.js tem que estar na raiz do zip (sem pasta antes)
+$primeiros = tar -t -f $destino | Select-Object -First 3
+if ($primeiros -notcontains 'lambda.js') { throw "O zip ficou errado: lambda.js não está na raiz ($($primeiros -join ', '))." }
 
 $mb = [math]::Round((Get-Item $destino).Length / 1MB, 1)
 Write-Host ""
-Write-Host "Pronto: $destino ($mb MB)" -ForegroundColor Green
+Write-Host "Pronto: $destino ($mb MB) - lambda.js na raiz: OK" -ForegroundColor Green
 Write-Host 'Envie em cada função: Lambda > função > Código > Fazer upload de > Arquivo .zip'

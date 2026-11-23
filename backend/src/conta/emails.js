@@ -105,7 +105,7 @@ async function enviarLink(executar, usuarioId, tipo, para, d) {
   const link = `${urlDoSistema()}/confirmar.html?t=${token}`;
   const m = modelo(tipo, { ...d, link, emailNovo: para });
   if (!configuracao()) {
-    console.log(`\n✉  [modo teste - e-mail não configurado no .env] Para: ${para}\n   Assunto: ${m.assunto}\n   Link: ${link}\n`);
+    console.log(`\n✉  [modo teste - e-mail não configurado: faltam EMAIL_BREVO_CHAVE e EMAIL_REMETENTE nas variáveis do servidor] Para: ${para}\n   Assunto: ${m.assunto}\n   Link: ${link}\n`);
     return { enviado: false, modo_teste: true, para, link_teste: link };
   }
   try {

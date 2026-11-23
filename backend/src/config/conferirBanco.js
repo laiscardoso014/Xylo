@@ -35,6 +35,7 @@ const MIGRACOES = [
   { arquivo: 'migracao_dev_equipe.sql', tabela: 'dev_historico', coluna: null },
   { arquivo: 'migracao_regime_empresa.sql', tabela: 'empresas', coluna: 'fiscal_sugerido' },
   { arquivo: 'migracao_tutorial.sql', tabela: 'tutorial_vistos', coluna: null },
+  { arquivo: 'migracao_classes_ticket.sql', tabela: 'classes_madeira', coluna: 'nomes_ticket' },
 ];
 
 let pendentes = []; // arquivos que faltam rodar (usado na mensagem de erro das telas)
@@ -66,7 +67,9 @@ async function conferirBanco() {
   } catch (err) {
     console.error('Não consegui conferir o banco de dados:', err.message);
     const dica = {
-      '28P01': 'A SENHA do CONNECTION_STRING está errada. Copie o texto de novo no Neon (Connect, sem "pooling") e cole em Render > Environment.',
+      '28P01': `A SENHA do CONNECTION_STRING está errada. Copie o texto de novo no Neon (Connect, sem "pooling", Show password) e cole ${
+        process.env.RENDER ? 'em Render > Environment' : process.env.AWS_LAMBDA_FUNCTION_NAME ? 'nas variáveis de ambiente da função Lambda'
+          : 'no arquivo backend/.env. No PowerShell, se você usou $env:CONNECTION_STRING nesta janela, ela vale mais que o .env: rode Remove-Item Env:CONNECTION_STRING ou abra outra janela'}.`,
       '3D000': 'O nome do banco no CONNECTION_STRING não existe.',
       ENOTFOUND: 'O endereço do banco no CONNECTION_STRING está errado (confira o texto copiado).',
       ECONNREFUSED: 'O banco não está aceitando conexão (no computador: o PostgreSQL está ligado?).',

@@ -1164,3 +1164,6 @@ CREATE TABLE IF NOT EXISTS tutorial_vistos (
     usuario_id INT PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
     visto_em   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Nomes da classe como aparecem no ticket (ver migracao_classes_ticket.sql)
+ALTER TABLE classes_madeira ADD COLUMN IF NOT EXISTS nomes_ticket VARCHAR(300);

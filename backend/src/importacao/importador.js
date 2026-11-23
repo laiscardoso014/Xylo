@@ -24,6 +24,7 @@ const { lerNumero } = require('../utils/numeros');
 const { documentoValido, telefoneValido } = require('../utils/documentos');
 const { idDoMotorista, motoristasCadastrados, placaValida, donoDaPlaca } = require('../utils/motoristas');
 
+const { acharClasse, classesDaEmpresa } = require('../utils/classes');
 const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[º°ª]/g, '').replace(/[^a-z0-9$/ ]+/g, ' ').replace(/\s+/g, ' ').trim();
 const chaveNome = (s) => norm(s).toUpperCase();
@@ -235,18 +236,8 @@ const paraTexto = (v) => {
 };
 const vazio = (v) => v === null || v === undefined || (typeof v === 'string' && !v.trim());
 
-// Classe pelo texto: "FINA 220" -> Fina, "COMPRIDA MEDIA" -> Média, "LIXO-PINUS" -> Lixo
-function acharClasse(texto, classes) {
-  const n = norm(texto);
-  if (!n) return null;
-  const exata = classes.find((c) => norm(c.nome) === n);
-  if (exata) return exata;
-  const chaves = [['lixo', 'lixo'], ['eucal', 'eucalipto'], ['grossa', 'grossa'], ['media', 'media'], ['fina', 'fina']];
-  for (const [trecho, nome] of chaves) {
-    if (n.includes(trecho)) { const c = classes.find((x) => norm(x.nome) === nome); if (c) return c; }
-  }
-  return classes.find((c) => n.includes(norm(c.nome))) || null;
-}
+// Classe pelo texto ("FINA 220" -> Fina, "COMPRIDA MEDIA" -> Média, "LIXO-PINUS" -> Lixo):
+// acharClasse vem de utils/classes.js, a mesma regra da leitura do ticket
 
 // ---------------------------------------------------------------------
 // ANÁLISE
@@ -280,7 +271,7 @@ async function analisarViagens(empresaId, brutas, opcoes) {
     query('SELECT id, nome, ativo FROM clientes WHERE empresa_id = $1', [empresaId]),
     query('SELECT id, nome, ativo FROM florestas WHERE empresa_id = $1', [empresaId]),
     query('SELECT id, nome, ativo FROM empreiteiros WHERE empresa_id = $1', [empresaId]),
-    query('SELECT id, nome FROM classes_madeira WHERE empresa_id = $1', [empresaId]),
+    classesDaEmpresa(query, empresaId, { soAtivas: false }).then((rows) => ({ rows })),
     motoristasCadastrados(query, empresaId),
   ]);
   const indice = (rows) => new Map(rows.map((r) => [chaveNome(r.nome), r]));

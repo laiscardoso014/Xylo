@@ -35,4 +35,4 @@ if ($Pasta) { Write-Host "Pasta: $Pasta" } else { Write-Host "Pasta: $(Join-Path
 Write-Host "Rodando o primeiro agora para testar..."
 Start-ScheduledTask -TaskName 'Xylo - backup diário'
 Start-Sleep -Seconds 8
-if (Test-Path $log) { Get-Content $log -Tail 5 }
+if (Test-Path $log) { Get-Content $log -Tail 5 -Encoding UTF8 }

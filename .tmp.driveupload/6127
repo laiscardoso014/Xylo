@@ -1,4 +1,0 @@
-   cd C:\Xylo
-   git add -A
-   git commit -m "Xylo publicado na AWS (CloudFront + Lambda + S3)"
-   git push

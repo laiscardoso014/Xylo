@@ -22,6 +22,7 @@
 const { query } = require('../config/db');
 const { motoristasCadastrados, donoDaPlaca, placaNaData, AVISO_CADASTRO } = require('../utils/motoristas');
 const { norm } = require('../importacao/importador');
+const { acharClasse, classesDaEmpresa } = require('../utils/classes');
 
 // ---------------------------------------------------------------------
 // Instrução para a IA (visão). Pede o texto como está impresso: a conversão
@@ -259,18 +260,7 @@ function acharPorNome(texto, lista) {
   return melhor;
 }
 
-function acharClasse(texto, classes) {
-  const n = norm(texto);
-  if (!n) return null;
-  const exata = classes.find((c) => norm(c.nome) === n);
-  if (exata) return exata;
-  // "Pinus fino", "tora grossa", "médio", "EUC"...
-  const chaves = [['lixo', 'lixo'], ['eucal', 'eucalipto'], ['euc ', 'eucalipto'], ['gross', 'grossa'], ['medi', 'media'], ['fin', 'fina']];
-  for (const [trecho, nome] of chaves) {
-    if (` ${n} `.includes(trecho)) { const c = classes.find((x) => norm(x.nome) === nome); if (c) return c; }
-  }
-  return classes.find((c) => n.includes(norm(c.nome))) || null;
-}
+// acharClasse: em utils/classes.js (mesma regra da importação de planilha)
 
 const dataBR = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
 
@@ -279,7 +269,7 @@ async function ligarCadastros(empresaId, lido) {
     query('SELECT id, nome FROM clientes WHERE empresa_id = $1 AND ativo', [empresaId]),
     query('SELECT id, nome FROM florestas WHERE empresa_id = $1 AND ativo', [empresaId]),
     query('SELECT id, nome FROM empreiteiros WHERE empresa_id = $1 AND ativo', [empresaId]),
-    query('SELECT id, nome FROM classes_madeira WHERE empresa_id = $1 AND ativo', [empresaId]),
+    classesDaEmpresa(query, empresaId).then((rows) => ({ rows })),
     motoristasCadastrados(query, empresaId).then((rows) => ({ rows })),
   ])).map((r) => r.rows);
 
