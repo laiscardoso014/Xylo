@@ -239,11 +239,39 @@ async function postar(url, cabecalhos, corpo, tempoMs = 60000) {
   }
 }
 
+
+// Chave no cabeçalho certo. O Google passou a gerar chaves novas que começam
+// com "AQ." (no lugar de "AIza..."); em algumas contas elas são recusadas no
+// formato "Bearer" e aceitas em "x-goog-api-key". Tenta um jeito e, se a
+// recusa for de autenticação, o outro; lembra qual funcionou.
+const jeitoDaChave = new Map();
+async function postarIA(cfg, corpo, tempoMs) {
+  if (!cfg.chave) return postar(cfg.url, {}, corpo, tempoMs);
+  const bearer = { authorization: `Bearer ${cfg.chave}` };
+  if (cfg.id !== 'gemini') return postar(cfg.url, bearer, corpo, tempoMs);
+  const jeitos = cfg.chave.startsWith('AQ.') ? ['goog', 'bearer'] : ['bearer', 'goog'];
+  const ordem = [...new Set([jeitoDaChave.get(cfg.chave), ...jeitos].filter(Boolean))];
+  let ultimo = null;
+  for (const j of ordem) {
+    try {
+      const r = await postar(cfg.url, j === 'goog' ? { 'x-goog-api-key': cfg.chave } : bearer, corpo, tempoMs);
+      jeitoDaChave.set(cfg.chave, j);
+      return r;
+    } catch (err) {
+      const deAutenticacao = [400, 401, 403].includes(err.status) && /auth|credential|api.?key|token|unauthenticated/i.test(err.message);
+      if (!deAutenticacao) throw err;
+      ultimo = err;
+    }
+  }
+  throw ultimo;
+}
+
 // ---------------------------------------------------------------------
 // Tenta os modelos do provedor em ordem até um responder.
 // tipo: 'chat' | 'visao'.  fn(cfgComOModelo) -> resultado
-// Só pula para o próximo se o erro for de MODELO (desativado / não existe);
-// limite, chave ou rede valem para o provedor todo e sobem na hora.
+// Pula para o próximo se o erro for de MODELO (desativado / não existe) ou,
+// na Groq, de LIMITE (lá o limite grátis é de cada modelo); chave ou rede
+// valem para o provedor todo e sobem na hora.
 // ---------------------------------------------------------------------
 async function comModelo(cfg, tipo, fn) {
   const campo = tipo === 'visao' ? 'modeloVisao' : 'modelo';
@@ -252,15 +280,22 @@ async function comModelo(cfg, tipo, fn) {
   const ordem = [...new Set([modeloQueFunciona.get(chave), ...lista].filter(Boolean))];
   const testados = [];
   let ultimoErro = null;
+  let limite = null;
   for (const modelo of ordem) {
     try {
       const r = await fn({ ...cfg, [campo]: modelo });
       if (modeloQueFunciona.get(chave) !== modelo) {
-        if (modelo !== lista[0]) console.warn(`[IA] ${cfg.nome}: usando o modelo ${modelo} (${testados.join(', ')} indisponível).`);
+        if (modelo !== lista[0]) console.warn(`[IA] ${cfg.nome}: usando o modelo ${modelo}${testados.length ? ` (${testados.join(', ')} indisponível)` : ''}.`);
         modeloQueFunciona.set(chave, modelo);
       }
       return r;
     } catch (err) {
+      // Groq: o limite grátis é POR MODELO. Acabou o deste? tenta o próximo da lista.
+      if (err.status === 429 && cfg.id === 'groq' && modelo !== ordem[ordem.length - 1]) {
+        console.warn(`[IA] ${cfg.nome}: limite do modelo ${modelo} acabou, tentando o próximo.`);
+        limite = err;
+        continue;
+      }
       if (!erroDeModelo(err)) throw err;
       console.warn(`[IA] ${cfg.nome}: modelo ${modelo} indisponível: ${err.message}`);
       testados.push(modelo);
@@ -268,6 +303,7 @@ async function comModelo(cfg, tipo, fn) {
       if (modeloQueFunciona.get(chave) === modelo) modeloQueFunciona.delete(chave);
     }
   }
+  if (limite && !ultimoErro) throw limite;
   throw Object.assign(new Error(ultimoErro ? ultimoErro.message : 'Nenhum modelo configurado.'),
     { status: ultimoErro?.status, semModelo: true, testados });
 }
@@ -307,10 +343,8 @@ async function conversarOpenAI(cfg, { sistema, mensagens, ferramentas, executar,
     ...mensagens.map((m) => ({ role: m.papel === 'assistente' ? 'assistant' : 'user', content: m.texto })),
   ];
   const tools = ferramentas.map((f) => ({ type: 'function', function: { name: f.name, description: f.description, parameters: f.input_schema } }));
-  const cabecalhos = cfg.chave ? { authorization: `Bearer ${cfg.chave}` } : {};
-
   for (let rodada = 0; rodada < maxRodadas; rodada++) {
-    const r = await postar(cfg.url, cabecalhos, {
+    const r = await postarIA(cfg, {
       model: cfg.modelo, messages: conversa, tools, tool_choice: 'auto', temperature: 0.2, max_tokens: 3000,
       ...extrasDoModelo(cfg, cfg.modelo),
     });
@@ -384,15 +418,14 @@ async function lerImagemCom(cfg, { instrucao, base64, mime }) {
       { type: 'image_url', image_url: { url: `data:${mime};base64,${base64}` } },
     ] }],
   };
-  const cabecalhos = cfg.chave ? { authorization: `Bearer ${cfg.chave}` } : {};
   let r;
   try {
-    r = await postar(cfg.url, cabecalhos, corpo, 60000);
+    r = await postarIA(cfg, corpo, 60000);
   } catch (err) {
     // modelo que não aceita desligar o raciocínio: tenta de novo sem esses campos
     if (err.status !== 400 || !/reasoning/i.test(err.message)) throw err;
     delete corpo.reasoning_effort; delete corpo.reasoning_format;
-    r = await postar(cfg.url, cabecalhos, corpo, 60000);
+    r = await postarIA(cfg, corpo, 60000);
   }
   return semPensamento(r.choices?.[0]?.message?.content || '');
 }
@@ -409,8 +442,7 @@ async function testar(cfg) {
         await postar(c.url, { 'x-api-key': c.chave, 'anthropic-version': '2023-06-01' },
           { model: c.modelo, max_tokens: 20, messages: [{ role: 'user', content: 'Responda apenas: ok' }] }, 30000);
       } else {
-        await postar(c.url, c.chave ? { authorization: `Bearer ${c.chave}` } : {},
-          { model: c.modelo, max_tokens: 300, messages: [{ role: 'user', content: 'Responda apenas: ok' }], ...extrasDoModelo(c, c.modelo) }, 30000);
+        await postarIA(c, { model: c.modelo, max_tokens: 300, messages: [{ role: 'user', content: 'Responda apenas: ok' }], ...extrasDoModelo(c, c.modelo) }, 30000);
       }
       return c.modelo;
     });

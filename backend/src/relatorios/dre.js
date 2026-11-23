@@ -183,13 +183,27 @@ function montarLinhas(v, categorias, fiscal) {
   add('receita_liquida', '(=) RECEITA OPERACIONAL LÍQUIDA', 'subtotal', receitaLiquida, 0);
 
   // 4. Custos
-  const custoOperacao = somaGrupo('custo');
-  const custos = -(v.floresta + v.empreiteiros + custoOperacao);
+  // Compra de madeira e empreitada lançadas como DESPESA (ex.: pagamentos do fechamento
+  // mensal importado da planilha) somam nas linhas próprias, junto com o valor das viagens
+  const ehMadeira = (c) => /madeira|floresta/i.test(c.nome);
+  const ehEmpreitada = (c) => !ehMadeira(c) && /empreit|corte e carregamento/i.test(c.nome);
+  const soma = (lista) => lista.reduce((t, c) => t + n(v.categorias[c.id]), 0);
+  const catMadeira = doGrupo('custo').filter(ehMadeira);
+  const catEmpreitada = doGrupo('custo').filter(ehEmpreitada);
+  const catOperacao = doGrupo('custo').filter((c) => !ehMadeira(c) && !ehEmpreitada(c));
+  const floresta = v.floresta + soma(catMadeira);
+  const empreiteiros = v.empreiteiros + soma(catEmpreitada);
+  const custoOperacao = soma(catOperacao);
+  const custos = -(floresta + empreiteiros + custoOperacao);
   add('custos', '(−) CUSTOS DOS PRODUTOS E SERVIÇOS VENDIDOS', 'grupo', custos, 0);
-  add('custo_floresta', 'Compra de madeira (florestas)', 'item', -v.floresta, 1, { sempre: true });
-  add('custo_empreiteiros', 'Corte e carregamento (empreiteiros)', 'item', -v.empreiteiros, 1, { sempre: true });
+  add('custo_floresta', 'Compra de madeira (florestas)', 'item', -floresta, 1, { sempre: true });
+  if (catMadeira.length) add('custo_floresta_viagens', 'Valor de compra nas viagens', 'item', -v.floresta, 2);
+  catMadeira.forEach((c) => add(`cat:${c.id}`, c.nome, 'item', -n(v.categorias[c.id]), 2));
+  add('custo_empreiteiros', 'Corte e carregamento (empreiteiros)', 'item', -empreiteiros, 1, { sempre: true });
+  if (catEmpreitada.length) add('custo_empreiteiros_viagens', 'Valor de empreitada nas viagens', 'item', -v.empreiteiros, 2);
+  catEmpreitada.forEach((c) => add(`cat:${c.id}`, c.nome, 'item', -n(v.categorias[c.id]), 2));
   add('custo_operacao', 'Custos da operação e transporte', 'item', -custoOperacao);
-  doGrupo('custo').forEach((c) => add(`cat:${c.id}`, c.nome, 'item', -n(v.categorias[c.id]), 2));
+  catOperacao.forEach((c) => add(`cat:${c.id}`, c.nome, 'item', -n(v.categorias[c.id]), 2));
 
   // 5. Lucro bruto
   const lucroBruto = receitaLiquida + custos;
@@ -254,7 +268,7 @@ function montarLinhas(v, categorias, fiscal) {
       viagens: v.viagens,
       fretes: v.fretes,
       receita_por_tonelada: tonTotal ? r2(v.receita_madeira / tonTotal) : null,
-      custo_madeira_por_tonelada: tonTotal ? r2((v.floresta + v.empreiteiros) / tonTotal) : null,
+      custo_madeira_por_tonelada: tonTotal ? r2((floresta + empreiteiros) / tonTotal) : null,
       resultado_por_tonelada: tonTotal ? r2(liquido / tonTotal) : null,
     },
   };
@@ -310,6 +324,10 @@ async function calcularDRE(empresaId, { de, ate, comparar = null, mensal = false
 
   // avisos de conferência
   const avisos = [];
+  // custo da madeira / folha lançados como DESPESA (ex.: importados do fechamento da planilha): não é falta de dado
+  const lancadoComoDespesa = (grupo, nome) => categorias.some((c) => c.grupo === grupo && nome.test(c.nome) && n((totalAtual.categorias || {})[c.id]) > 0);
+  if (lancadoComoDespesa('custo', /madeira|floresta/i)) totalAtual.sem_compra = 0;
+  if (lancadoComoDespesa('pessoal', /folha|sal[aá]rio/i)) totalAtual.folhas = totalAtual.folhas || 1;
   if (totalAtual.sem_compra) avisos.push(`${totalAtual.sem_compra} viagem(ns) sem o valor de compra da floresta: o custo da madeira está menor do que o real.`);
   if (fiscal.fiscal_sugerido && fiscal.regime_tributario) avisos.push(`Impostos estimados para o ${REGIMES[fiscal.regime_tributario]} (valores típicos do regime). Peça ao contador para conferir e ajuste em Configurar.`);
   if (!n(fiscal.aliquota_receita) && fiscal.regime_tributario !== 'mei' && !categorias.some((c) => c.grupo === 'impostos')) avisos.push('Sem alíquota de impostos sobre a receita: informe o regime e a alíquota em Relatórios › DRE › Configurar para a DRE descontar os impostos.');
